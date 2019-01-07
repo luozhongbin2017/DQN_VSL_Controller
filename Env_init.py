@@ -124,6 +124,7 @@ class Env():       ###It needs to be modified
         pass
     
     def is_done(self,):
+        traci.close()
         pass
 
 #Image preprocessing (should i keep this stage?) -> dataset(ndarray)

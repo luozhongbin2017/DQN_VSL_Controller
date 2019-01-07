@@ -67,10 +67,10 @@ def DQNAgent():
     args = parser.parse_args()
     device = torch.device("cuda" if args.cuda else "cpu")
 
-    env, scenario_training = Environment.Env()  ###This IO needs to be modified
+    env_traino = Environment.Env()  ###This IO needs to be modified
     state_shape = env.state_shape
     action_size = env.action_size
-    env = ptan.common.wrappers.wrap_dqn(env, stack_frames = 3)
+    env = ptan.common.wrappers.wrap_dqn(env_traino, stack_frames = 3)
 
     writer = SummaryWriter(comment="-Variable-Speed-Controller-Dueling")
     net = CreateNetwork(state_shape, action_size).to(device)
@@ -110,7 +110,8 @@ def DQNAgent():
             
             if frame_idx % 5000 == 0: #Start evaluation
                 evaluate_agent(params, tgt_net)
-    scenario_training.close()
+        envo.is_done()
+    
 
 if __name__ == '__main__':
     DQNAgent()
@@ -124,12 +125,13 @@ def evaluate_agent(params, tgt_net):   ###This needs to be modified
     tmp_system_time_mean = []          
     for idx_eval in range(3):
         
-        env_evaluation, scenario_evaluation = Environment.Env(evaluation = True)  ###This IO needs to be modified in file /lib/Environment
-        env_evaluation = ptan.common.wrappers.wrap_dqn(env_evaluation)
+        env_evalo = Environment.Env(evaluation = True)  ###This IO needs to be modified in file /lib/Environment
+        env_eval = ptan.common.wrappers.wrap_dqn(env_evalo)
         reward_sum, mainline_time, ramp_time, _ = evaluate_agent(env_evaluation, scenario_evaluation, tgt_net)
         tmp_reward.append(reward_sum)
         tmp_mainline_time_mean.append(np.mean(mainline_time))
         tmp_ramp_time_mean.append(np.mean(ramp_time))
         tmp_system_time_mean.append(np.mean(mainline_time+ramp_time))
+        env_evalo.is_done()
 
-    scenario_evaluation.close()
+    
