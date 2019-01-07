@@ -1,0 +1,24 @@
+class Env 
+
+成员
+self.run_step=0
+当前模拟的步数
+
+self.lane_list=list()
+所有lane的Id
+
+self.vehicle_list=list()
+每个步骤下所有车辆的ID
+self。vehicle_list[self.run_step][laneID]=[vehicle_1_ID,vehicle__ID,......]
+
+self.vehicle_position=list()
+每个步骤下所有车辆的位置，list的长度为道路的长度除以平均车辆的长度
+self。vehicle_list[self.run_step][laneID]=[0,0,1,0.....]
+
+成员函数
+
+step(self, traci, action)
+
+action为一个dict(),key为laneID，value为laneMaxSpeed
+执行step将修改action中laneMaxSpeed
+然后计算ob和reward并返回
