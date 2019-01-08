@@ -62,14 +62,12 @@ class CreateNetwork(nn.Module):
 #Training
 def DQNAgent():
     params = common.Constants
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--cuda", default=False, action="store_true", help="Enable cuda")
-    args = parser.parse_args()
-    device = torch.device("cuda" if args.cuda else "cpu")
+    print("Cuda's availability is %s" % torch.cuda.is_available())
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     env_traino = Environment.Env()  ###This IO needs to be modified
-    state_shape = env.state_shape
-    action_size = env.action_size
+    state_shape = env_traino.state_shape
+    action_size = env_traino.action_size
     env = ptan.common.wrappers.wrap_dqn(env_traino, stack_frames = 3)
 
     writer = SummaryWriter(comment="-Variable-Speed-Controller-Dueling")
@@ -110,7 +108,7 @@ def DQNAgent():
             
             if frame_idx % 5000 == 0: #Start evaluation
                 evaluate_agent(params, tgt_net)
-        envo.is_done()
+        env_traino.is_done()
     
 
 if __name__ == '__main__':
