@@ -68,7 +68,7 @@ def DQNAgent():
     env_traino = Environment.Env()  ###This IO needs to be modified
     state_shape = env_traino.state_shape
     action_size = env_traino.action_size
-    env = ptan.common.wrappers.wrap_dqn(env_traino, stack_frames = 3)
+    env = common.wrappers.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(comment="-Variable-Speed-Controller-Dueling")
     net = CreateNetwork(state_shape, action_size).to(device)

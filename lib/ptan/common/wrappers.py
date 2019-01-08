@@ -155,7 +155,7 @@ class ClippedRewardsWrapper(gym.RewardWrapper):
         """Change all the positive rewards to 1, negative to -1 and keep zero."""
         return np.sign(reward)
 
-
+#***
 class LazyFrames(object):
     def __init__(self, frames):
         """This object ensures that common frames between the observations are only stored once.
@@ -171,7 +171,7 @@ class LazyFrames(object):
             out = out.astype(dtype)
         return out
 
-
+#***
 class FrameStack(gym.Wrapper):
     def __init__(self, env, k):
         """Stack k last frames.
