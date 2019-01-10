@@ -18,7 +18,7 @@ from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 
 from lib import ptan
-from utils import common
+from common import action, agent, utils, experience, tracker, wrapper
 
 #Build Up Dueling Neural Network
 class CreateNetwork(nn.Module):
@@ -32,7 +32,7 @@ class CreateNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2),
             nn.ReLU()
         )
 
@@ -61,29 +61,29 @@ class CreateNetwork(nn.Module):
 
 #Training
 def DQNAgent():
-    params = common.Constants
+    params = utils.Constants
     print("Cuda's availability is %s" % torch.cuda.is_available())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     env_traino = Environment.Env()  ###This IO needs to be modified
     state_shape = env_traino.state_shape
     action_size = env_traino.action_size
-    env = common.wrappers.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
+    env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(comment="-Variable-Speed-Controller-Dueling")
     net = CreateNetwork(state_shape, action_size).to(device)
-    tgt_net = ptan.agent.TargetNet(net)
-    selector = ptan.actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start']) # = def choose actions
-    epsilon_tracker = common.EpsilonTracker(selector, params)
-    agent = ptan.agent.DQNAgent(net, selector, device=device)
+    tgt_net = agent.TargetNet(net)
+    selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
+    epsilon_tracker = tracker.EpsilonTracker(selector, params)
+    agent = agent.DQNAgent(net, selector, device=device)
 
-    exp_source = ptan.experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
-    buffer = ptan.experience.ExperienceReplayBuffer(exp_source, buffer_size=params['replay_size'])  #batch sampling
+    exp_source = experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
+    buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
     optimizer = optim.RMSprop(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0
 
-    with common.RewardTracker(writer, params['stop_reward']) as reward_tracker:
+    with tracker.RewardTracker(writer, params['stop_reward']) as reward_tracker:
         while True:
             frame_idx += 1
             buffer.populate(1)
@@ -98,8 +98,8 @@ def DQNAgent():
                 continue
 
             optimizer.zero_grad()
-            batch = buffer.sample(params['batch_size'])
-            loss_v = common.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], device=device)
+            batch = buffer.sample(params['batch_size'], beta = 0.4)
+            loss_v = utils.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], device=device)
             loss_v.backward()
             optimizer.step()
 
@@ -124,7 +124,7 @@ def evaluate_agent(params, tgt_net):   ###This needs to be modified
     for idx_eval in range(3):
         
         env_evalo = Environment.Env(evaluation = True)  ###This IO needs to be modified in file /lib/Environment
-        env_eval = ptan.common.wrappers.wrap_dqn(env_evalo)
+        env_eval = wrapper.wrap_dqn(env_evalo)
         reward_sum, mainline_time, ramp_time, _ = evaluate_agent(env_evaluation, scenario_evaluation, tgt_net)
         tmp_reward.append(reward_sum)
         tmp_mainline_time_mean.append(np.mean(mainline_time))
