@@ -32,6 +32,7 @@ class Env():       ###It needs to be modified
         self.lane_list=list()
         self.vehicle_list=list()
         self.vehicle_position=list()
+        
 
         # initialize sumo path
         
@@ -45,7 +46,7 @@ class Env():       ###It needs to be modified
         projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
 
         # initialize lane_list
-        net_tree = ET.parse("net.xml")
+        net_tree = ET.parse("ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
 
@@ -99,6 +100,7 @@ class Env():       ###It needs to be modified
                 self.vehicle_position[self.run_step][lane]+=1
         return 
     
+
     def update_observation(self, traci):
         # Update observation of environment state.
         pass
@@ -106,6 +108,50 @@ class Env():       ###It needs to be modified
         pass
         return 0
     
+
+    def step_reward(self):
+        lane_speed=[0]*len(self.lane_list)
+        i = 0
+
+        for lane in self.lane_list:
+            cur_speed_sum = 0
+            for vehicle in self.vehicle_list[self.run_step][lane]:
+                cur_speed_sum += traci.vehicle.getSpeed(vehicle)
+
+            lane_speed[i]=cur_speed_sum / len(self.vehicle_list[self.run_step][lane])
+            i += 1
+
+        queue_len = [0] * len(self.lane_list)
+        i = 0
+        for lane in self.lane_list:
+            j = len(self.vehicle_position[self.run_step][lane])
+            while True:
+                if self.vehicle_position[self.run_step][lane][j]==1:
+                    queue_len[i]+=1
+                else:
+                    break
+            i+=1
+
+        i=0
+        vehicle_sum = 0
+        queue_len_sum = 0
+        while i < len(self.lane_list):
+            queue_len_sum+=queue_len[i]
+            i+=1
+        
+        for lane in self.lane_list:
+            vehicle_sum += len(traci.lane.getLastStepVehicleIDs(lane))
+
+        U=queue_len_sum+vehicle_sum
+
+        min_speed=min(lane_speed)
+        if min>U:
+            return 0
+        else:
+            return -1*U/3600
+
+        pass
+
     
     def step(self, traci, action):
         # Conduct action, update observation and collect reward.
