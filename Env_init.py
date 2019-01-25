@@ -145,7 +145,8 @@ class Env():       ###It needs to be modified
         U=queue_len_sum+vehicle_sum
 
         min_speed=min(lane_speed)
-        if min>U:
+
+        if min_speed>U:
             return 0
         else:
             return -1*U/3600
@@ -160,7 +161,7 @@ class Env():       ###It needs to be modified
         for (lane,maxSpeed) in action:
             traci.lane.setMaxSpeed(lane,maxSpeed)
 
-        reward=0
+        reward=self.step_reward()
         # reward is unkonwn
         observation=self.update_observation(traci)
         return reward,observation
