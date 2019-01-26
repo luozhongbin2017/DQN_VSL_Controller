@@ -217,8 +217,8 @@ class PrioritizedReplayBuffer(ExperienceReplayBuffer):
         while it_capacity < buffer_size:
             it_capacity *= 2
 
-        self._it_sum = Memory.SumSegmentTree(it_capacity)
-        self._it_min = Memory.MinSegmentTree(it_capacity)
+        self._it_sum = memory.SumSegmentTree(it_capacity)
+        self._it_min = memory.MinSegmentTree(it_capacity)
         self._max_priority = 1.0
 
     def _add(self, *args, **kwargs):

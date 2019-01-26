@@ -6,9 +6,9 @@ import torch.nn as nn
 
 # Define Constants
 Constants = {
-        'training_name':         'training',
-        'evaluate_name':         'evaluation',
-        'stop_reward':      1.0,  # Modifiable 
+        'training_name':'training',
+        'evaluate_name':'evaluation',
+        'stop_reward':      -0.1,  # Modifiable 
         
         ### MEMORY HYPERPARAMETERS
         'replay_size':      100000,

@@ -35,7 +35,7 @@ class RewardTracker:
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
         if mean_reward > self.stop_reward:
-            print("Solved in %d frames!" % frame)
+            print("Finished in %d steps!" % frame)
             return True
         return False
 

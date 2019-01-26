@@ -14,7 +14,7 @@ state_shape = (3,20,880)             # Our input is a stack of 3 frames hence 20
 WARM_UP_TIME = 300 * 1e3,
 END_TIME = 7500 * 1e3
 action_size = 5                # 5 possible actions
-actions = [40, 50, 60, 70, 80] # possible actions collection
+actions = [60, 70, 80, 90, 100] # possible actions collection (km/h)
 
 VEHICLE_MEAN_LENGTH = 5
 
@@ -46,7 +46,7 @@ class Env():       ###It needs to be modified
         projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
 
         # initialize lane_list
-        net_tree = ET.parse("ramp.net.xml")
+        net_tree = ET.parse("./project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
 
@@ -110,7 +110,7 @@ class Env():       ###It needs to be modified
     
 
     def step_reward(self):
-        threshold = 101 #it needs to be modified
+        threshold = 80/3.6 #it needs to be modified
         lane_speed=[0]*len(self.lane_list)
         i = 0
 
@@ -152,15 +152,13 @@ class Env():       ###It needs to be modified
         else:
             return -1*U/3600
 
-        pass
-
     
     def step(self, traci, action):
         # Conduct action, update observation and collect reward.
 
         # change lane speed
         for (lane,maxSpeed) in action:
-            traci.lane.setMaxSpeed(lane,maxSpeed)
+            traci.lane.setMaxSpeed(lane, maxSpeed/3.6)
 
         # reward is unkonwn
         observation = self.update_observation(traci)

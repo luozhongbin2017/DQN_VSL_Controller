@@ -8,6 +8,15 @@ class ActionSelector:
     def __call__(self, scores):
         raise NotImplementedError
 
+
+class ArgmaxActionSelector(ActionSelector):
+    """
+    Selects actions using argmax
+    """
+    def __call__(self, scores):
+        assert isinstance(scores, np.ndarray)
+        return np.argmax(scores, axis=1)
+
 class EpsilonGreedyActionSelector(ActionSelector):
     def __init__(self, epsilon=0.05, selector=None):
         self.epsilon = epsilon

@@ -20,6 +20,9 @@ from tensorboardX import SummaryWriter
 from lib import ptan
 from common import action, agent, utils, experience, tracker, wrapper
 
+#Global Variable:
+params = utils.Constants
+
 #Build Up Dueling Neural Network
 class CreateNetwork(nn.Module):
     """
@@ -61,29 +64,28 @@ class CreateNetwork(nn.Module):
 
 #Training
 def DQNAgent():
-    params = utils.Constants
     print("Cuda's availability is %s" % torch.cuda.is_available())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     env_traino = Environment.Env()  ###This IO needs to be modified
     state_shape = env_traino.state_shape
     action_size = env_traino.action_size
-    env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
+    #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
-    writer = SummaryWriter(comment="-Variable-Speed-Controller-Dueling")
+    writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
     net = CreateNetwork(state_shape, action_size).to(device)
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
     agent = agent.DQNAgent(net, selector, device=device)
 
-    exp_source = experience.ExperienceSourceFirstLast(env, agent, gamma=params['gamma'], steps_count=1)
+    exp_source = experience.ExperienceSourceFirstLast(env_traino, agent, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
     optimizer = optim.RMSprop(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0
 
-    with tracker.RewardTracker(writer, params['stop_reward']) as reward_tracker:
+    with tracker.RewardTracker(writer, params['stop_reward']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
             frame_idx += 1
             buffer.populate(1)
@@ -103,33 +105,48 @@ def DQNAgent():
             loss_v.backward()
             optimizer.step()
 
+            #Writer function -> Tensorboard file
+            writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
+
+            #Evaluation function -> Tensorboard file
+            if frame_idx % 5000 == 0:  #start evaluation
+                for i in range(3):
+                    evaluation_agent(device, net)
+                
+
+
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
-            
-            if frame_idx % 5000 == 0: #Start evaluation
-                evaluate_agent(params, tgt_net)
+
         env_traino.is_done()
     
 
 if __name__ == '__main__':
     DQNAgent()
 
+def evaluation_agent(device, neural_network):
+    env_evalo = Environment.Env(evaluation = True)
+    eval_writer = SummaryWriter(log_dir = './logs/evaluation', comment = '-Variable-Speed-Controller-Dueling')
+    eval_selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
+    eval_epsilon_tracker = tracker.EpsilonTracker(eval_selector, params)
+    eval_agent = agent.DQNAgent(neural_network, eval_selector, device = device)
+    exp_source = experience.ExperienceSourceFirstLast(env_evalo, agent, gamma=params['gamma'], steps_count=1)
+    buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
 
-#Play and evaluation
-def evaluate_agent(params, tgt_net):   ###This needs to be modified        
-    tmp_reward = []
-    tmp_mainline_time_mean = []
-    tmp_ramp_time_mean = []
-    tmp_system_time_mean = []          
-    for idx_eval in range(3):
-        
-        env_evalo = Environment.Env(evaluation = True)  ###This IO needs to be modified in file /lib/Environment
-        env_eval = wrapper.wrap_dqn(env_evalo)
-        reward_sum, mainline_time, ramp_time, _ = evaluate_agent(env_evaluation, scenario_evaluation, tgt_net)
-        tmp_reward.append(reward_sum)
-        tmp_mainline_time_mean.append(np.mean(mainline_time))
-        tmp_ramp_time_mean.append(np.mean(ramp_time))
-        tmp_system_time_mean.append(np.mean(mainline_time+ramp_time))
+    eval_idx = 0
+
+    with tracker.RewardTracker(eval_writer, params['stop_reward']) as reward_tracker:
+        while True:
+            eval_idx += 1
+            buffer.populate(1)
+            eval_epsilon_tracker.frame(eval_idx)
+
+            new_rewards = exp_source.pop_total_rewards()
+            if new_rewards:
+                if reward_tracker.reward(new_rewards[0], eval_idx, eval_selector.epsilon):
+                    break
+            
+            eval_writer.add_scalars('Evaluation', {'Total_reward': new_rewards}, global_step = eval_idx)
+
         env_evalo.is_done()
 
-    
