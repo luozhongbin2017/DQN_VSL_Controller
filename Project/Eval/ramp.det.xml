@@ -1,0 +1,39 @@
+<additional>
+
+    <inductionLoop id="mainline_eval_0_0" lane="mainline_up_0"   pos="1200" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_0_1" lane="mainline_up_1"   pos="1200" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_0_2" lane="mainline_up_2"   pos="1200" freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_1_0" lane="mainline_up_0"   pos="1600" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_1_1" lane="mainline_up_1"   pos="1600" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_1_2" lane="mainline_up_2"   pos="1600" freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_2_0" lane="mainline_up_0"   pos="2000" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_2_1" lane="mainline_up_1"   pos="2000" freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_2_2" lane="mainline_up_2"   pos="2000" freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_3_0" lane="merging_0"       pos="25"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_3_1" lane="merging_1"       pos="25"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_3_2" lane="merging_2"       pos="25"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_3_3" lane="merging_3"       pos="25"   freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_4_0" lane="merging_0"       pos="75"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_4_1" lane="merging_1"       pos="75"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_4_2" lane="merging_2"       pos="75"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_4_3" lane="merging_3"       pos="75"   freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_5_0" lane="mainline_down_0" pos="150"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_5_1" lane="mainline_down_1" pos="150"   freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_5_2" lane="mainline_down_2" pos="150"   freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="mainline_eval_6_0" lane="mainline_down_0" pos="240"  freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_6_1" lane="mainline_down_1" pos="240"  freq="60" file=".\Output\mainline_eval.out"/>
+    <inductionLoop id="mainline_eval_6_2" lane="mainline_down_2" pos="240"  freq="60" file=".\Output\mainline_eval.out"/>
+
+    <inductionLoop id="ramp_eval_0_0" lane="ramp_0" pos="300" freq="60" file=".\Output\ramp_eval.out"/>
+
+    <inductionLoop id="ramp_eval_2_0" lane="ramp_0" pos="1070" freq="60" file=".\Output\ramp_eval.out"/>
+
+    <laneAreaDetector id="ramp_eval_1_0" lane="ramp_0" pos="0" freq="60" length="1180" file=".\Output\ramp_eval.out"/>
+
+</additional>

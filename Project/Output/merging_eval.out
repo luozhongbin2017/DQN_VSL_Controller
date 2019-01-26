@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 07/19/18 06:55:29 by SUMO Version 0.32.0
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="./SimulationProject/Scenario_4/ramp.net.xml"/>
+        <route-files value="./SimulationProject/Scenario_4/ramp.rou.xml"/>
+        <additional-files value="./SimulationProject/Scenario_4/ramp.det.xml"/>
+    </input>
+
+    <time>
+        <begin value="0"/>
+    </time>
+
+    <report>
+        <verbose value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="12822"/>
+    </traci_server>
+
+    <random_number>
+        <seed value="15795"/>
+    </random_number>
+
+    <gui_only>
+        <quit-on-end value="true"/>
+        <start value="true"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<detector xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/det_e1_file.xsd">
+    <interval begin="0.00" end="60.00" id="merging_eval_0_0" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" length="-1.00" nVehEntered="0"/>
+    <interval begin="0.00" end="60.00" id="merging_eval_0_1" nVehContrib="5" flow="300.00" occupancy="2.09" speed="20.10" length="5.00" nVehEntered="5"/>
+    <interval begin="0.00" end="60.00" id="merging_eval_0_2" nVehContrib="11" flow="660.00" occupancy="4.38" speed="21.27" length="5.00" nVehEntered="11"/>
+    <interval begin="60.00" end="120.00" id="merging_eval_0_0" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" length="-1.00" nVehEntered="0"/>
+    <interval begin="60.00" end="120.00" id="merging_eval_0_1" nVehContrib="13" flow="780.00" occupancy="5.72" speed="19.04" length="5.00" nVehEntered="13"/>
+    <interval begin="60.00" end="120.00" id="merging_eval_0_2" nVehContrib="20" flow="1200.00" occupancy="8.29" speed="20.24" length="5.00" nVehEntered="20"/>
+    <interval begin="120.00" end="180.00" id="merging_eval_0_0" nVehContrib="5" flow="300.00" occupancy="7.02" speed="6.73" length="5.00" nVehEntered="5"/>
+    <interval begin="120.00" end="180.00" id="merging_eval_0_1" nVehContrib="20" flow="1200.00" occupancy="11.94" speed="16.11" length="5.00" nVehEntered="22"/>
+    <interval begin="120.00" end="180.00" id="merging_eval_0_2" nVehContrib="25" flow="1500.00" occupancy="12.22" speed="18.95" length="5.00" nVehEntered="25"/>
+    <interval begin="180.00" end="240.00" id="merging_eval_0_0" nVehContrib="2" flow="120.00" occupancy="1.15" speed="14.52" length="5.00" nVehEntered="2"/>
+    <interval begin="180.00" end="240.00" id="merging_eval_0_1" nVehContrib="23" flow="1380.00" occupancy="12.30" speed="15.96" length="5.00" nVehEntered="23"/>
+    <interval begin="180.00" end="240.00" id="merging_eval_0_2" nVehContrib="32" flow="1920.00" occupancy="14.55" speed="19.80" length="5.00" nVehEntered="32"/>
+    <interval begin="240.00" end="300.00" id="merging_eval_0_0" nVehContrib="2" flow="120.00" occupancy="1.61" speed="10.82" length="5.00" nVehEntered="2"/>
+    <interval begin="240.00" end="300.00" id="merging_eval_0_1" nVehContrib="24" flow="1440.00" occupancy="12.23" speed="16.93" length="5.00" nVehEntered="24"/>
+    <interval begin="240.00" end="300.00" id="merging_eval_0_2" nVehContrib="25" flow="1500.00" occupancy="10.70" speed="20.23" length="5.00" nVehEntered="26"/>
+    <interval begin="300.00" end="360.00" id="merging_eval_0_0" nVehContrib="2" flow="120.00" occupancy="2.14" speed="8.66" length="5.00" nVehEntered="2"/>
+    <interval begin="300.00" end="360.00" id="merging_eval_0_1" nVehContrib="25" flow="1500.00" occupancy="16.78" speed="13.23" length="5.00" nVehEntered="27"/>
+    <interval begin="300.00" end="360.00" id="merging_eval_0_2" nVehContrib="31" flow="1860.00" occupancy="14.13" speed="19.33" length="5.00" nVehEntered="30"/>
+    <interval begin="360.00" end="420.00" id="merging_eval_0_0" nVehContrib="1" flow="60.00" occupancy="1.09" speed="7.67" length="5.00" nVehEntered="1"/>
+    <interval begin="360.00" end="420.00" id="merging_eval_0_1" nVehContrib="25" flow="1500.00" occupancy="13.73" speed="15.50" length="5.00" nVehEntered="24"/>
+    <interval begin="360.00" end="420.00" id="merging_eval_0_2" nVehContrib="29" flow="1740.00" occupancy="12.13" speed="20.05" length="5.00" nVehEntered="29"/>
+    <interval begin="420.00" end="480.00" id="merging_eval_0_0" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" length="-1.00" nVehEntered="0"/>
+    <interval begin="420.00" end="480.00" id="merging_eval_0_1" nVehContrib="22" flow="1320.00" occupancy="13.35" speed="14.16" length="5.00" nVehEntered="23"/>
+    <interval begin="420.00" end="480.00" id="merging_eval_0_2" nVehContrib="28" flow="1680.00" occupancy="12.01" speed="19.53" length="5.00" nVehEntered="28"/>
+    <interval begin="480.00" end="540.00" id="merging_eval_0_0" nVehContrib="4" flow="240.00" occupancy="3.84" speed="9.52" length="5.00" nVehEntered="

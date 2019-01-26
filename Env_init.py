@@ -110,6 +110,7 @@ class Env():       ###It needs to be modified
     
 
     def step_reward(self):
+        threshold = 101 #it needs to be modified
         lane_speed=[0]*len(self.lane_list)
         i = 0
 
@@ -142,11 +143,11 @@ class Env():       ###It needs to be modified
         for lane in self.lane_list:
             vehicle_sum += len(traci.lane.getLastStepVehicleIDs(lane))
 
-        U=queue_len_sum+vehicle_sum
+        U = queue_len_sum + vehicle_sum
 
-        min_speed=min(lane_speed)
+        min_speed = min(lane_speed)
 
-        if min_speed>U:
+        if min_speed > threshold:
             return 0
         else:
             return -1*U/3600
@@ -161,9 +162,9 @@ class Env():       ###It needs to be modified
         for (lane,maxSpeed) in action:
             traci.lane.setMaxSpeed(lane,maxSpeed)
 
-        reward=self.step_reward()
         # reward is unkonwn
-        observation=self.update_observation(traci)
+        observation = self.update_observation(traci)
+        reward = self.step_reward()
         return reward,observation
 
     def frame_buffer(self,):
@@ -171,7 +172,8 @@ class Env():       ###It needs to be modified
     
     def is_done(self,):
         traci.close()
-        pass
+        env_closer.close()
+        return
 
 #Image preprocessing (should i keep this stage?) -> dataset(ndarray)
     
