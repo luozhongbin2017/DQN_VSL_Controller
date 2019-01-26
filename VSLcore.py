@@ -67,7 +67,7 @@ def DQNAgent():
     print("Cuda's availability is %s" % torch.cuda.is_available())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    env_traino = Environment.Env()  ###This IO needs to be modified
+    env_traino = Environment.SumoEnv()  ###This IO needs to be modified
     state_shape = env_traino.state_shape
     action_size = env_traino.action_size
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
@@ -118,19 +118,19 @@ def DQNAgent():
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
 
-        env_traino.is_done()
+        env_traino.close()
     
 
 if __name__ == '__main__':
     DQNAgent()
 
 def evaluation_agent(device, neural_network):
-    env_evalo = Environment.Env(evaluation = True)
+    env_evalo = Environment.SumoEnv(evaluation = True)
     eval_writer = SummaryWriter(log_dir = './logs/evaluation', comment = '-Variable-Speed-Controller-Dueling')
     eval_selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     eval_epsilon_tracker = tracker.EpsilonTracker(eval_selector, params)
     eval_agent = agent.DQNAgent(neural_network, eval_selector, device = device)
-    exp_source = experience.ExperienceSourceFirstLast(env_evalo, agent, gamma=params['gamma'], steps_count=1)
+    exp_source = experience.ExperienceSourceFirstLast(env_evalo, eval_agent, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
 
     eval_idx = 0
@@ -145,5 +145,5 @@ def evaluation_agent(device, neural_network):
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], eval_idx, eval_selector.epsilon):
                     break
-        env_evalo.is_done()
+        env_evalo.close()
 
