@@ -106,11 +106,11 @@ def DQNAgent():
             optimizer.step()
 
             #Writer function -> Tensorboard file
-            writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
+            #writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
 
             #Evaluation function -> Tensorboard file
             if frame_idx % 5000 == 0:  #start evaluation
-                for i in range(3):
+                for i in range(3): 
                     evaluation_agent(device, net)
                 
 
@@ -145,8 +145,5 @@ def evaluation_agent(device, neural_network):
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], eval_idx, eval_selector.epsilon):
                     break
-            
-            eval_writer.add_scalars('Evaluation', {'Total_reward': new_rewards}, global_step = eval_idx)
-
         env_evalo.is_done()
 
