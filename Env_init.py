@@ -438,7 +438,10 @@ class SumoEnv(Env):       ###It needs to be modified
                 index = (vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH
                 self.vehicle_position[self.run_step][lane]+=1
         return 
-    
+
+    @property
+    def _n_actions(self):
+        return len(self._action_set)
 
     def update_observation(self, traci):
         # Update observation of environment state.

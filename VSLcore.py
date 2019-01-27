@@ -68,12 +68,10 @@ def DQNAgent():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     env_traino = Environment.SumoEnv()  ###This IO needs to be modified
-    state_shape = env_traino.state_shape
-    action_size = env_traino.action_size
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
-    net = CreateNetwork(state_shape, action_size).to(device)
+    net = CreateNetwork(state_shape, env.traino.n_actions).to(device)
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
