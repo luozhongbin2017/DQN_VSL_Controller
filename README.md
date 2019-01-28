@@ -6,3 +6,6 @@ Objects to finish including filling up unfinished structure and building up conn
 
 Log Jan 7th, 2019:
 The framework has been constructed. However, the evaluation system needs to be fill in and the connection shall be confirmed working.
+
+Log Jan 28th, 2019:
+This structure has referenced to gym-based environment. Thus, the construction and wrapping methods must follow an instruction foward by the credits of gym.
