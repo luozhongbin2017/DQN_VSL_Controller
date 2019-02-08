@@ -45,8 +45,8 @@ class Env():       ###It needs to be modified
         else:
             sys.exit("please declare environment variable 'SUMO_HOME'")
 
-        sumoBinary = "sumo"
-        projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
+        self.sumoBinary = "sumo"
+        self.projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
 
         # initialize lane_list
         net_tree = ET.parse("ramp.net.xml")
@@ -80,13 +80,13 @@ class Env():       ###It needs to be modified
             np.random.seed(43)
             N_SIM_TRAINING = 20
             random_seeds_training = np.random.randint(low=0, high=1e5, size=N_SIM_TRAINING)
-            traci.start([sumoBinary, '-c', projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_training)), '--quit-on-end'], label='training')
+            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_training)), '--quit-on-end'], label='training')
             self.scenario = traci.getConnection('training')
         else:
             np.random.seed(42)
             N_SIM_EVAL = 3
             random_seeds_eval = np.random.randint(low=0, high=1e5, size=N_SIM_EVAL)
-            traci.start([sumoBinary, '-c', projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_eval)), '--quit-on-end'], label='training')
+            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_eval)), '--quit-on-end'], label='training')
             self.scenario = traci.getConnection('evaluation')
         self.run_step = 0
     
@@ -105,7 +105,7 @@ class Env():       ###It needs to be modified
 
         return False
 
-    def warm_up_simulation(self, traci):
+    def warm_up_simulation(self):
         # Warm up simulation.
         warm_step=0
         while warm_step < WARM_UP_TIME:
@@ -129,23 +129,24 @@ class Env():       ###It needs to be modified
     
 
 
-    def update_observation(self, traci):
+    def update_observation(self):
         # Update observation of environment state.
         pass
         # Your codes are here.
         self.update_target_vehicle_set()
         self.transform_vehicle_position()
 
+        current_step_vehicle = list()
         for lane in self.lane_list:
-            for vehicle in self.vehicle_list[self.run_step][lane]:
-                traci.vehicle.setMaxSpeed(vehicle,traci.lane.getMaxSpeed(traci.vehicle.getLaneID(vehicle)))
+            current_step_vehicle += self.vehicle_list[self.run_step][lane]
 
-        for lanearea in self.lanearea_dec_list:
-            vehicle_in_lane = traci.lanearea.getLastStepVehicleIDs(lanearea)
-            for vehicle in vehicle_in_lane:
-                traci.vehicle.steMaxSpeed(vehicle,self.lanearea_max_speed[lanearea])
-        pass
-        return 0
+        vehicle_speed = dict()
+        vehicle_acceleration = dict()
+        for vehicle in current_step_vehicle:
+            vehicle_speed[vehicle] = traci.vehicle.getSpeed(vehicle)
+            vehicle_acceleration[vehicle] = traci.vehicle.getAcceleration(vehicle)
+        
+        return self.vehicle_position[self.run_step],vehicle_speed,vehicle_acceleration
     
 
     def step_reward(self):
@@ -194,17 +195,60 @@ class Env():       ###It needs to be modified
         pass
 
     
+    def reset_vehicle_maxspeed(self):
+        for lane in self.lane_list:
+            max_speed = traci.lane.getMaxSpeed(lane)
+            for vehicle in self.vehicle_list[self.run_step][lane]:
+                traci.vehicle.setMaxSpeed(vehicle,max_speed)
+        
+        for dec_lane in self.lanearea_dec_list:
+            vehicle_list = traci.lanearea.getLastStepVehicleIDs(dec_lane)
+            max_speed = self.lanearea_max_speed[dec_lane]
+            for vehicle in vehicle_list:
+                traci.vehicle.setMaxSpeed(vehicle,max_speed)
+
+        pass
 
 
-    def step(self, traci, action):
+    def step(self, a):
         # Conduct action, update observation and collect reward.
-
-        # change lane speed
-        self.lanearea_dec_list[action[0]]=action[1]
-
-        observation = self.update_observation(traci)
+        action = self.action_set[a]
+        self.lanearea_max_speed[action[0]]=action[1]
+        self.reset_vehicle_maxspeed()
+        observation = self.update_observation()
         reward = self.step_reward()
-        return reward,observation
+
+        self.run_step += 1
+        traci.simulationStep()
+        return reward,observation,self.is_episode()
+
+
+
+    def reset(self,evaluation):
+        # Start simulation with the random seed randomly selected the pool.
+        if evaluation == False:
+            np.random.seed(43)
+            N_SIM_TRAINING = 20
+            random_seeds_training = np.random.randint(low=0, high=1e5, size=N_SIM_TRAINING)
+            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_training)), '--quit-on-end'], label='training')
+            self.scenario = traci.getConnection('training')
+        else:
+            np.random.seed(42)
+            N_SIM_EVAL = 3
+            random_seeds_eval = np.random.randint(low=0, high=1e5, size=N_SIM_EVAL)
+            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_eval)), '--quit-on-end'], label='training')
+            self.scenario = traci.getConnection('evaluation')
+
+        self.warm_up_simulation()
+
+        self.run_step = 0
+
+        return self.update_observation()
+
+
+
+    def render(self):
+        pass
 
     def frame_buffer(self,):
         pass
