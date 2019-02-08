@@ -1,13 +1,15 @@
 # Environment Construction
 import numpy as np
+from lib import gym
 from lib.sumo.tools import traci
 import os,sys
 import xml.etree.ElementTree as ET
+
+from lib.gym import error, spaces
+from lib.gym import utils
+from lib.gym.utils import seeding
 from collections import deque
 from sumolib import checkBinary
-from common import closer
-
-env_closer = closer.Closer()
 
 #Environment Constants       
 state_shape = (3,20,880)             # Our input is a stack of 3 frames hence 20x880x3 (Width, height, channels)
@@ -19,8 +21,8 @@ speeds = [11.11, 13.88, 16.67, 19.44, 22.22]
 
 VEHICLE_MEAN_LENGTH = 5
 
-class Env():       ###It needs to be modified
-    def __init__(self, evaluation=False):
+class SumoEnv(gym.Env):       ###It needs to be modified
+    def __init__(self, frameskip = 3, evaluation = False):
         #create environment
 
         self.state_shape = state_shape
@@ -28,14 +30,16 @@ class Env():       ###It needs to be modified
         self.actions = actions
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
+        self.evaluation = evaluation
 
-        self.run_step=0
-        self.lane_list=list()
-        self.vehicle_list=list()
-        self.vehicle_position=list()
-        self.lanearea_dec_list=list()
-        self.lanearea_max_speed=dict()
-        self.action_set=list()
+        self.run_step = 0
+        self.lane_list = list()
+        self.vehicle_list = list()
+        self.vehicle_position = list()
+        self.lanearea_dec_list = list()
+        self.lanearea_max_speed = dict()
+        self.action_set = list()
+        self.pre_reward = 0.0
 
         # initialize sumo path
         
@@ -64,6 +68,7 @@ class Env():       ###It needs to be modified
         for lanearea in self.lanearea_dec_list:
             for speed in speeds:
                 self.action_set.append([lanearea,speed])
+        self.action_space = spaces.Discrete(len(self.action_set))
 
         # initialize vehicle_list and vehicle_position
         run_step = 0
@@ -74,35 +79,17 @@ class Env():       ###It needs to be modified
                 self.vehicle_list[run_step][lane.attrib["id"]]=list()
                 self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 1)
             run_step += 1
-        
-        # Start simulation with the random seed randomly selected the pool.
-        if evaluation == False:
-            np.random.seed(43)
-            N_SIM_TRAINING = 20
-            random_seeds_training = np.random.randint(low=0, high=1e5, size=N_SIM_TRAINING)
-            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_training)), '--quit-on-end'], label='training')
-            self.scenario = traci.getConnection('training')
-        else:
-            np.random.seed(42)
-            N_SIM_EVAL = 3
-            random_seeds_eval = np.random.randint(low=0, high=1e5, size=N_SIM_EVAL)
-            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_eval)), '--quit-on-end'], label='training')
-            self.scenario = traci.getConnection('evaluation')
-        self.run_step = 0
-    
-    def new_episode(self,):
-        pass
     
     def is_episode(self):
+        if self.run_step == END_TIME:
+            traci.close()
+            return True
         for lanearea_dec in self.lanearea_dec_list:
             dec_length=traci.lanearea.getLength(lanearea_dec)
             jam_length=traci.lanearea.getJamLengthMeters(lanearea_dec)
-            if jam_length * 0.8 > dec_length:
+            if jam_length * 0.8 < dec_length:
+                traci.close()
                 return True
-        
-        if self.run_step == END_TIME:
-            return True
-
         return False
 
     def warm_up_simulation(self):
@@ -126,13 +113,10 @@ class Env():       ###It needs to be modified
                 index = (vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH
                 self.vehicle_position[self.run_step][lane][index]+=1
         return 
-    
-
 
     def update_observation(self):
         # Update observation of environment state.
-        pass
-        # Your codes are here.
+
         self.update_target_vehicle_set()
         self.transform_vehicle_position()
 
@@ -146,21 +130,10 @@ class Env():       ###It needs to be modified
             vehicle_speed[vehicle] = traci.vehicle.getSpeed(vehicle)
             vehicle_acceleration[vehicle] = traci.vehicle.getAcceleration(vehicle)
         
-        return self.vehicle_position[self.run_step],vehicle_speed,vehicle_acceleration
+        return self.vehicle_position[self.run_step], vehicle_speed, vehicle_acceleration
     
 
     def step_reward(self):
-        threshold = 101 #it needs to be modified
-        lane_speed=[0]*len(self.lane_list)
-        i = 0
-
-        for lane in self.lane_list:
-            cur_speed_sum = 0
-            for vehicle in self.vehicle_list[self.run_step][lane]:
-                cur_speed_sum += traci.vehicle.getSpeed(vehicle)
-
-            lane_speed[i]=cur_speed_sum / len(self.vehicle_list[self.run_step][lane])
-            i += 1
 
         queue_len = [0] * len(self.lane_list)
         i = 0
@@ -173,27 +146,19 @@ class Env():       ###It needs to be modified
                     break
             i+=1
 
-        i=0
+        i = 0
         vehicle_sum = 0
         queue_len_sum = 0
         while i < len(self.lane_list):
             queue_len_sum+=queue_len[i]
-            i+=1
+            i += 1
         
         for lane in self.lane_list:
             vehicle_sum += len(traci.lane.getLastStepVehicleIDs(lane))
 
         U = queue_len_sum + vehicle_sum
-
-        min_speed = min(lane_speed)
-
-        if min_speed > threshold:
-            return 0
-        else:
-            return -1*U/3600
-
-        pass
-
+        
+        return -(1 * U/3600 - self.pre_reward)
     
     def reset_vehicle_maxspeed(self):
         for lane in self.lane_list:
@@ -207,11 +172,9 @@ class Env():       ###It needs to be modified
             for vehicle in vehicle_list:
                 traci.vehicle.setMaxSpeed(vehicle,max_speed)
 
-        pass
-
-
     def step(self, a):
         # Conduct action, update observation and collect reward.
+        reward = 0.0
         action = self.action_set[a]
         self.lanearea_max_speed[action[0]]=action[1]
         self.reset_vehicle_maxspeed()
@@ -220,23 +183,17 @@ class Env():       ###It needs to be modified
 
         self.run_step += 1
         traci.simulationStep()
-        return reward,observation,self.is_episode()
+        return reward, observation, self.is_episode()
 
-
-
-    def reset(self,evaluation):
-        # Start simulation with the random seed randomly selected the pool.
-        if evaluation == False:
-            np.random.seed(43)
-            N_SIM_TRAINING = 20
-            random_seeds_training = np.random.randint(low=0, high=1e5, size=N_SIM_TRAINING)
-            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_training)), '--quit-on-end'], label='training')
+    def reset(self):
+        # Reset simulation with the random seed randomly selected the pool.
+        if self.evaluation == False:
+            seed = self.seed()[1]
+            traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='training')
             self.scenario = traci.getConnection('training')
         else:
-            np.random.seed(42)
-            N_SIM_EVAL = 3
-            random_seeds_eval = np.random.randint(low=0, high=1e5, size=N_SIM_EVAL)
-            traci.start([self.sumoBinary, '-c', self.projectFile+'ramp.sumo.cfg', '--start','--seed', str(np.random.choice(random_seeds_eval)), '--quit-on-end'], label='training')
+            seed = self.seed()[1]
+            traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='evaluation')
             self.scenario = traci.getConnection('evaluation')
 
         self.warm_up_simulation()
@@ -244,19 +201,14 @@ class Env():       ###It needs to be modified
         self.run_step = 0
 
         return self.update_observation()
-
-
+    
+    def seed(self, seed= None):
+        self.np_random, seed1 = seeding.np_random(seed)
+        # Derive a random seed. This gets passed as a uint, but gets
+        # checked as an int elsewhere, so we need to keep it below
+        # 2**31.
+        seed2 = seeding.hash_seed(seed1 + 1) % 2**31
+        return [seed1, seed2]
 
     def render(self):
         pass
-
-    def frame_buffer(self,):
-        pass
-    
-    def is_done(self,):
-        traci.close()
-        env_closer.close()
-        return
-
-#Image preprocessing (should i keep this stage?) -> dataset(ndarray)
-    

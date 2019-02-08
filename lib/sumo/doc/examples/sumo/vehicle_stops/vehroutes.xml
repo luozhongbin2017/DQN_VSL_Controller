@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 02/09/19 01:33:20 by Eclipse SUMO GUI Version 1.0.1
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\vehicle_stops\net.net.xml"/>
+        <route-files value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\vehicle_stops\input_routes.rou.xml"/>
+    </input>
+
+    <output>
+        <write-license value="true"/>
+        <vehroute-output value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\vehicle_stops\vehroutes.xml"/>
+    </output>
+
+    <processing>
+        <default.speeddev value="0"/>
+    </processing>
+
+    <report>
+        <xml-validation value="never"/>
+        <duration-log.disable value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+</configuration>
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+</routes>

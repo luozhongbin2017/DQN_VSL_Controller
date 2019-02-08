@@ -68,14 +68,16 @@ def DQNAgent():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     env_traino = Environment.SumoEnv()  ###This IO needs to be modified
+    env_traino = env_traino.unwrapped
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
-    net = CreateNetwork(state_shape, env.traino.n_actions).to(device)
+    net = CreateNetwork(state_shape, env_traino.n_actions).to(device)
+    writer.add_graph(CreateNetwork(), (state_shape, env_traino.n_actions))
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
-    agent = agent.DQNAgent(net, selector, device=device)
+    agent = agent.DQNAgent(net, selector, device = device)
 
     exp_source = experience.ExperienceSourceFirstLast(env_traino, agent, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
@@ -104,19 +106,16 @@ def DQNAgent():
             optimizer.step()
 
             #Writer function -> Tensorboard file
-            #writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
+            writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
 
             #Evaluation function -> Tensorboard file
             if frame_idx % 5000 == 0:  #start evaluation
                 for i in range(3): 
                     evaluation_agent(device, net)
                 
-
-
+            
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
-
-        env_traino.close()
     
 
 if __name__ == '__main__':
@@ -143,5 +142,4 @@ def evaluation_agent(device, neural_network):
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], eval_idx, eval_selector.epsilon):
                     break
-        env_evalo.close()
 

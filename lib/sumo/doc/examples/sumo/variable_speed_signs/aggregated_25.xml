@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 02/09/19 01:33:49 by Eclipse SUMO GUI Version 1.0.1
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\variable_speed_signs\net.net.xml"/>
+        <route-files value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\variable_speed_signs\input_routes.rou.xml"/>
+        <additional-files value="H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\variable_speed_signs\input_additional.add.xml,H:\Files\交通运输工程\交科\Github\DQN_VSL_Controller\lib\sumo\doc\examples\sumo\variable_speed_signs\input_additional2.add.xml"/>
+    </input>
+
+    <output>
+        <write-license value="true"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <end value="1000"/>
+    </time>
+
+    <processing>
+        <default.speeddev value="0"/>
+    </processing>
+
+    <report>
+        <xml-validation value="never"/>
+        <duration-log.disable value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+</configuration>
+-->
+
+<meandata xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/meandata_file.xsd">
+    <interval begin="0.00" end="17.00" id="dump_25">
+        <edge id="beg" sampledSeconds="22.00" traveltime="30.10" overlapTraveltime="30.28" density="2.60" occupancy="0.74" waitingTime="0.00" speed="16.56" departed="2" arrived="0" entered="0" left="0" laneChangedFrom="0" laneChangedTo="0"/>
+    </interval>
+</meandata>
