@@ -4,11 +4,11 @@ import os,sys
 sys.path.append("lib")
 import xml.etree.ElementTree as ET
 
-from lib import gym
-from lib.sumo.tools import traci
-from lib.gym import error, spaces
-from lib.gym import utils
-from lib.gym.utils import seeding
+import gym
+import traci
+from gym import error, spaces
+from gym import utils
+from gym.utils import seeding
 from collections import deque
 from sumolib import checkBinary
 
@@ -110,8 +110,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             lane_shape = traci.lane.getShape(lane)
             for vehicle in self.vehicle_list[self.run_step][lane]:
                 vehicle_pos= traci.vehicle.getPosition(vehicle)
-                index = (vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH
-                self.vehicle_position[self.run_step][lane][index]+=1
+                index = int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH)
+                self.vehicle_position[self.run_step][lane][index]=1
         return [self.lane_list, self.vehicle_position]
 
     def update_observation(self):
@@ -120,19 +120,36 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.update_target_vehicle_set()
         self.transform_vehicle_position()
 
+        lane_map = list()
+        i=0
+        for lane in self.lane_list:
+            lane_map[i]=lane
+            i+=1
+
+        vehicle_position=list()
+        i=0
+        while i < len(self.lane_list):
+            vehicle_position.append(self.vehicle_position[self.run_step][lane_map[i]])
+            i+=1
+
         current_step_vehicle = list()
         for lane in self.lane_list:
             current_step_vehicle += self.vehicle_list[self.run_step][lane]
 
-        vehicle_speed = dict()
-        vehicle_acceleration = dict()
+        vehicle_speed = vehicle_position
+        vehicle_acceleration = vehicle_position
         for vehicle in current_step_vehicle:
-            vehicle_speed[vehicle] = traci.vehicle.getSpeed(vehicle)
-            vehicle_acceleration[vehicle] = traci.vehicle.getAcceleration(vehicle)
-        state = (self.vehicle_position[self.run_step], vehicle_speed, vehicle_acceleration)
+            vehicle_in_lane = traci.vehicle.getLaneID(vehicle)
+            lane_index = lane_map.index(lane)
+            vehicle_pos= traci.vehicle.getPosition(vehicle)
+            lane_shape = traci.lane.getShape(vehicle_in_lane)
+            vehicle_index = int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH)
+            vehicle_speed[lane_index][vehicle_index] = traci.vehicle.getSpeed(vehicle) 
+            vehicle_acceleration[vehicle][vehicle_index] = traci.vehicle.getAcceleration(vehicle)
+        state = (vehicle_position, vehicle_speed, vehicle_acceleration)
         return np.array(state)
     
-
+ 
     def step_reward(self):
 
         queue_len = [0] * len(self.lane_list)
