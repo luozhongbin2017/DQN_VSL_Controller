@@ -11,23 +11,23 @@ from lib.gym.utils import seeding
 from collections import deque
 from sumolib import checkBinary
 
-#Environment Constants       
-WARM_UP_TIME = 300 * 1e3,
-END_TIME = 7500 * 1e3
+#Environment Constants
+STATE_SHAPE = (3,)       
+WARM_UP_TIME = 3 * 1e3
+END_TIME = 12 * 1e3
+VEHICLE_MEAN_LENGTH = 5
 speeds = [11.11, 13.88, 16.67, 19.44, 22.22]  # possible actions collection
 
-VEHICLE_MEAN_LENGTH = 5
+
 
 class SumoEnv(gym.Env):       ###It needs to be modified
     def __init__(self, frameskip = 3, evaluation = False):
         #create environment
 
-        self.state_shape = state_shape
-        self.action_size = action_size
-        self.actions = actions
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
         self.evaluation = evaluation
+        self.state_shape = STATE_SHAPE
 
         self.run_step = 0
         self.lane_list = list()
@@ -108,7 +108,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         for lane in self.lane_list:
             lane_shape = traci.lane.getShape(lane)
             for vehicle in self.vehicle_list[self.run_step][lane]:
-                vehicle_pos= traci.vehicle.getPostion(vehicle)
+                vehicle_pos= traci.vehicle.getPosition(vehicle)
                 index = (vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH
                 self.vehicle_position[self.run_step][lane][index]+=1
         return [self.lane_list, self.vehicle_position]
@@ -129,7 +129,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             vehicle_speed[vehicle] = traci.vehicle.getSpeed(vehicle)
             vehicle_acceleration[vehicle] = traci.vehicle.getAcceleration(vehicle)
         state = (self.vehicle_position[self.run_step], vehicle_speed, vehicle_acceleration)
-        return state
+        return np.array(state)
     
 
     def step_reward(self):

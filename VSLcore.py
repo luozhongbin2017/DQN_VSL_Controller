@@ -30,36 +30,20 @@ class CreateNetwork(nn.Module):
     """
     def __init__ (self, input_shape, n_actions):
         super(CreateNetwork, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2),
-            nn.ReLU()
-        )
-
-        conv_out_size = self._get_conv_out(input_shape)
         self.fc_adv = nn.Sequential(
-            nn.Linear(conv_out_size, 512),
+            nn.Linear(input_shape[0], 512),
             nn.ReLU(),
             nn.Linear(512, n_actions)
         )
         self.fc_val = nn.Sequential(
-            nn.Linear(conv_out_size, 512),
+            nn.Linear(input_shape[0], 512),
             nn.ReLU(),
             nn.Linear(512, 1)
         )
 
-    def _get_conv_out(self, shape):
-        o = self.conv(torch.Tensor.new_zeros(1, *shape))
-        return int(np.prod(o.size()))
-
     def forward(self, x):
-        fx = x.float() / 256
-        conv_out = self.conv(fx).view(fx.size()[0], -1)
-        val = self.fc_val(conv_out)
-        adv = self.fc_adv(conv_out)
+        val = self.fc_val(x)
+        adv = self.fc_adv(x)
         return val + adv - adv.mean() #action_value
 
 #Training
@@ -72,8 +56,8 @@ def DQNAgent():
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
-    net = CreateNetwork(env_traino.observation_space.shape[0], env_traino.action_space.n).to(device)
-    writer.add_graph(CreateNetwork(env_traino.observation_space.shape[0], env_traino.action_space.n), torch.FloatTensor(env_traino.reset()))
+    net = CreateNetwork(env_traino.state_shape, env_traino.action_space.n).to(device)
+    writer.add_graph(CreateNetwork(env_traino.state_shape, env_traino.action_space.n), torch.FloatTensor(env_traino.reset()))
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
