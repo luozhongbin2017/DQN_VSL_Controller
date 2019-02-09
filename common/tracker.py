@@ -5,9 +5,10 @@ import torch
 import torch.nn as nn
 
 class RewardTracker:
-    def __init__(self, writer, stop_reward):
+    def __init__(self, writer, stop_reward, stop_frame):
         self.writer = writer
         self.stop_reward = stop_reward
+        self.stop_frame = stop_frame
 
     def __enter__(self):
         self.ts = time.time()
@@ -34,8 +35,8 @@ class RewardTracker:
         self.writer.add_scalar("speed", speed, frame)
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
-        if mean_reward > self.stop_reward:
-            print("Finished in %d steps!" % frame)
+        if mean_reward > self.stop_reward or  frame > self.stop_frame:
+            print("Task finished in %d steps!" % frame)
             return True
         return False
 

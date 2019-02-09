@@ -72,8 +72,8 @@ def DQNAgent():
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
-    net = CreateNetwork(state_shape, env_traino.n_actions).to(device)
-    writer.add_graph(CreateNetwork(), (state_shape, env_traino.n_actions))
+    net = CreateNetwork(env_traino.observation_space.shape[0], env_traino.action_space.n).to(device)
+    writer.add_graph(CreateNetwork(env_traino.observation_space.shape[0], env_traino.action_space.n), torch.FloatTensor(env_traino.reset()))
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
@@ -85,7 +85,7 @@ def DQNAgent():
 
     frame_idx = 0
 
-    with tracker.RewardTracker(writer, params['stop_reward']) as reward_tracker:  #stop reward needs to be modified according to reward function
+    with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
             frame_idx += 1
             buffer.populate(1)
@@ -112,7 +112,10 @@ def DQNAgent():
             if frame_idx % 5000 == 0:  #start evaluation
                 for i in range(3): 
                     evaluation_agent(device, net)
-                
+            
+            #saving model
+            if frame_idx % 10000 == 0:
+                pass
             
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
@@ -132,7 +135,7 @@ def evaluation_agent(device, neural_network):
 
     eval_idx = 0
 
-    with tracker.RewardTracker(eval_writer, params['stop_reward']) as reward_tracker:
+    with tracker.RewardTracker(eval_writer, params['stop_reward'], params['stop_frame']) as reward_tracker:
         while True:
             eval_idx += 1
             buffer.populate(1)

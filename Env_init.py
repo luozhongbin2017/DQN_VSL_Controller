@@ -12,12 +12,9 @@ from collections import deque
 from sumolib import checkBinary
 
 #Environment Constants       
-state_shape = (3,20,880)             # Our input is a stack of 3 frames hence 20x880x3 (Width, height, channels)
 WARM_UP_TIME = 300 * 1e3,
 END_TIME = 7500 * 1e3
-action_size = 5                # 5 possible actions
-actions = [40, 50, 60, 70, 80] # possible actions collection
-speeds = [11.11, 13.88, 16.67, 19.44, 22.22]
+speeds = [11.11, 13.88, 16.67, 19.44, 22.22]  # possible actions collection
 
 VEHICLE_MEAN_LENGTH = 5
 
@@ -38,7 +35,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.vehicle_position = list()
         self.lanearea_dec_list = list()
         self.lanearea_max_speed = dict()
-        self.action_set = list()
+        self.action_set = dict()
         self.pre_reward = 0.0
 
         # initialize sumo path
@@ -53,21 +50,23 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
 
         # initialize lane_list
-        net_tree = ET.parse("ramp.net.xml")
+        net_tree = ET.parse("project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
 
         # initialize lanearea_dec_list
-        dec_tree = ET.parse("ramp.add.xml")
+        dec_tree = ET.parse("project/ramp.add.xml")
         for lanearea_dec in dec_tree.iter("laneAreaDetector"):
             self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
  
          
 
         # initalize action set
+        i = 0
         for lanearea in self.lanearea_dec_list:
             for speed in speeds:
-                self.action_set.append([lanearea,speed])
+                self.action_set[i] = [lanearea,speed]
+                i += 1
         self.action_space = spaces.Discrete(len(self.action_set))
 
         # initialize vehicle_list and vehicle_position
@@ -112,7 +111,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
                 vehicle_pos= traci.vehicle.getPostion(vehicle)
                 index = (vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH
                 self.vehicle_position[self.run_step][lane][index]+=1
-        return 
+        return [self.lane_list, self.vehicle_position]
 
     def update_observation(self):
         # Update observation of environment state.
@@ -129,8 +128,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         for vehicle in current_step_vehicle:
             vehicle_speed[vehicle] = traci.vehicle.getSpeed(vehicle)
             vehicle_acceleration[vehicle] = traci.vehicle.getAcceleration(vehicle)
-        
-        return self.vehicle_position[self.run_step], vehicle_speed, vehicle_acceleration
+        state = (self.vehicle_position[self.run_step], vehicle_speed, vehicle_acceleration)
+        return state
     
 
     def step_reward(self):
