@@ -1,10 +1,11 @@
 # Environment Construction
 import numpy as np
-from lib import gym
-from lib.sumo.tools import traci
 import os,sys
+sys.path.append("lib")
 import xml.etree.ElementTree as ET
 
+from lib import gym
+from lib.sumo.tools import traci
 from lib.gym import error, spaces
 from lib.gym import utils
 from lib.gym.utils import seeding
@@ -47,15 +48,15 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             sys.exit("please declare environment variable 'SUMO_HOME'")
 
         self.sumoBinary = "sumo"
-        self.projectFile = './SimulationProject/Scenario_4_v3_VSLdueling/'    
+        self.projectFile = './project/'    
 
         # initialize lane_list
-        net_tree = ET.parse("project/ramp.net.xml")
+        net_tree = ET.parse("./project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
 
         # initialize lanearea_dec_list
-        dec_tree = ET.parse("project/ramp.add.xml")
+        dec_tree = ET.parse("./project/ramp.add.xml")
         for lanearea_dec in dec_tree.iter("laneAreaDetector"):
             self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
  

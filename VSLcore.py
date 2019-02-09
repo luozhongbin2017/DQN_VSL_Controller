@@ -8,15 +8,16 @@ Created on Sun Jan  6 13:36:09 2019
 #Import Modules
 import argparse
 import numpy as np
-
 import Env_init as Environment
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import os,sys
+sys.path.append("lib")
+sys.path.append("common")
+
 from torch.autograd import Variable
-
 from tensorboardX import SummaryWriter
-
 from lib import ptan
 from common import action, agent, utils, experience, tracker, wrapper
 
@@ -65,7 +66,7 @@ def DQNAgent():
 
     exp_source = experience.ExperienceSourceFirstLast(env_traino, agent, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
-    optimizer = optim.RMSprop(net.parameters(), lr=params['learning_rate'])
+    optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0
 
@@ -84,7 +85,7 @@ def DQNAgent():
                 continue
 
             optimizer.zero_grad()
-            batch = buffer.sample(params['batch_size'], beta = 0.4)
+            batch = buffer.samplse(params['batch_size'], beta = 0.4)
             loss_v = utils.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], device=device)
             loss_v.backward()
             optimizer.step()
