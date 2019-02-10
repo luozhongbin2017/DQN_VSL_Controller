@@ -4,6 +4,7 @@ import os,sys
 sys.path.append("lib")
 import xml.etree.ElementTree as ET
 
+import cmath
 import gym
 import traci
 from gym import error, spaces
@@ -77,7 +78,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             self.vehicle_position.append(dict())
             for lane in net_tree.iter("lane"):
                 self.vehicle_list[run_step][lane.attrib["id"]]=list()
-                self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 1)
+                lane_shape = lane.attrib["shape"]
+                
+                self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 2)
             run_step += 1
     
     def is_episode(self):
@@ -110,7 +113,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             lane_shape = traci.lane.getShape(lane)
             for vehicle in self.vehicle_list[self.run_step][lane]:
                 vehicle_pos= traci.vehicle.getPosition(vehicle)
-                index = int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH)
+                index = abs(int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH))
                 self.vehicle_position[self.run_step][lane][index]=1
         return [self.lane_list, self.vehicle_position]
 
@@ -120,7 +123,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.update_target_vehicle_set()
         self.transform_vehicle_position()
 
-        lane_map = list()
+        lane_map = [0] * len(self.lane_list)
         i=0
         for lane in self.lane_list:
             lane_map[i]=lane
@@ -143,9 +146,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             lane_index = lane_map.index(lane)
             vehicle_pos= traci.vehicle.getPosition(vehicle)
             lane_shape = traci.lane.getShape(vehicle_in_lane)
-            vehicle_index = int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH)
+            vehicle_index = abs(int(vehicle_pos[0]/VEHICLE_MEAN_LENGTH))
             vehicle_speed[lane_index][vehicle_index] = traci.vehicle.getSpeed(vehicle) 
-            vehicle_acceleration[vehicle][vehicle_index] = traci.vehicle.getAcceleration(vehicle)
+            vehicle_acceleration[lane_index][vehicle_index] = traci.vehicle.getAcceleration(vehicle)
         state = (vehicle_position, vehicle_speed, vehicle_acceleration)
         return np.array(state)
     
