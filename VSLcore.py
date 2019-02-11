@@ -24,14 +24,14 @@ from common import action, agent, utils, experience, tracker, wrapper
 params = utils.Constants
 
 #Build Up Dueling Neural Network
-class CreateNetwork(nn.Module):
+class DuelingNetwork(nn.Module):
     """
     Create a neural network to convert image data
     """
     def __init__(self, input_shape, n_actions):
-        super(CreateNetwork, self).__init__()
+        super(DuelingNetwork, self).__init__()
 
-        self.conv = nn.Sequential(
+        self.Convolutional_Layer = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
@@ -42,12 +42,12 @@ class CreateNetwork(nn.Module):
 
         #print('input_shape[0]: ', input_shape[0])
         conv_out_size = self._get_conv_out(input_shape)
-        self.fc_adv = nn.Sequential(
+        self.Fully_Connected_adv = nn.Sequential(
             nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, n_actions)
         )
-        self.fc_val = nn.Sequential(
+        self.Fully_Connected_val = nn.Sequential(
             nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, 1)
@@ -55,15 +55,15 @@ class CreateNetwork(nn.Module):
 
     def _get_conv_out(self, shape):
         #print('1, *shape: ', torch.zeros(1, *shape).size())
-        o = self.conv(torch.zeros(1, *shape))
+        o = self.Convolutional_Layer(torch.zeros(1, *shape))
         return int(np.prod(o.size()))
 
     def forward(self, x):
         fx = x.float()
         #print(x.size())
-        conv_out = self.conv(fx).view(fx.size()[0], -1)
-        val = self.fc_val(conv_out)
-        adv = self.fc_adv(conv_out)
+        conv_out = self.Convolutional_Layer(fx).view(fx.size()[0], -1)
+        val = self.Fully_Connected_val(conv_out)
+        adv = self.Fully_Connected_adv(conv_out)
         return val + adv - adv.mean()
 
 #Training
@@ -77,10 +77,10 @@ def DQNAgent():
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(comment = '-VSL-Dueling-')
-    net = CreateNetwork(env.state_shape, env.action_space.n).to(device)
+    net = DuelingNetwork(env.state_shape, env.action_space.n).to(device)
     env_graph = Environment.SumoEnv(device)
     env_graph = env_graph.unwrapped
-    writer.add_graph(CreateNetwork(env_graph.state_shape, env_graph.action_space.n), env_graph.reset())
+    writer.add_graph(DuelingNetwork(env_graph.state_shape, env_graph.action_space.n), (env_graph.reset(),))
     if env_graph.run_step > 0:
         env_graph.close()
     tgt_net = agent.TargetNet(net)
