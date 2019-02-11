@@ -24,11 +24,11 @@ class RewardTracker:
         speed = (frame - self.ts_frame) / (time.time() - self.ts)
         self.ts_frame = frame
         self.ts = time.time()
-        print('type(self.total_rewards):', type(self.total_rewards))
-        print('self.total_rewards:', self.total_rewards)
+        #print('type(self.total_rewards):', type(self.total_rewards))
+        #print('self.total_rewards:', self.total_rewards)
         mean_reward = np.mean(self.total_rewards[-100:])
         epsilon_str = "" if epsilon is None else ", eps %.2f" % epsilon
-        print("%d: done %d episode(s), mean reward %.3f, speed %.2f f/s%s" % (
+        print("%d: Having done %d episode(s), mean reward %.3f, speed %.2f f/s%s" % (
             frame, len(self.total_rewards), mean_reward, speed, epsilon_str
         ))
         sys.stdout.flush()

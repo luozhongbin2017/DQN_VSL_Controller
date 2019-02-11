@@ -150,3 +150,16 @@ def step_reward(self):
         return -(1 * U/3600 - self.pre_reward)
 
 modified:
+def step_reward(self):
+        #Using waiting_time to present reward.
+
+        wt = list()
+        for lane in self.lane_list:
+            #print(traci.lane.getWaitingTime(lane))
+            wt.append(traci.lane.getWaitingTime(lane))
+        self.waiting_time += np.sum(wt)
+        reward = -10 if np.sum(wt) != 0 else 1
+        #print(reward)
+        return reward
+
+Finally, it's all done!

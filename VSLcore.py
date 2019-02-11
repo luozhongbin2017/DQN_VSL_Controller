@@ -21,7 +21,14 @@ from tensorboardX import SummaryWriter
 from common import action, agent, utils, experience, tracker, wrapper
 
 #Global Variable:
+parser = argparse.ArgumentParser() 
+parser.add_argument("--gpu", default = None, type = int, help= 'GPU id to use.')
+parser.add_argument("--resume", default = 'saved_network/checkpoint.tar', type = str, help= 'path to latest checkpoint')
+args = parser.parse_args()
 params = utils.Constants
+PRIO_REPLAY_ALPHA = 0.6
+BETA_START = 0.4
+BETA_FRAMES = 100000
 
 #Build Up Dueling Neural Network
 class DuelingNetwork(nn.Module):
@@ -36,7 +43,7 @@ class DuelingNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=1, stride=1),
+            nn.Conv2d(64, 64, kernel_size=2, stride=1),
             nn.ReLU()
         )
 
@@ -68,64 +75,85 @@ class DuelingNetwork(nn.Module):
 
 #Training
 def DQNAgent():
-    print("Cuda's availability is %s" % torch.cuda.is_available())
+    print("CUDA™ is " + "AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        args.gpu = int(input("Please assign a gpu core: "))
+    if args.gpu is not None:
+        print("Now using GPU CORE #{} for training".format(args.gpu))
+        torch.cuda.set_device(args.gpu)
 
-    env = Environment.SumoEnv(device)  ###This IO needs to be modified
-    env = env.unwrapped
+    env = Environment.SumoEnv()  ###This IO needs to be modified
+    #env = env.unwrapped
     #print(env_traino.state_shape)
-    #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper needs to be modified
+    #print(env.observation_space.shape)
 
-    writer = SummaryWriter(comment = '-VSL-Dueling-')
-    net = DuelingNetwork(env.state_shape, env.action_space.n).to(device)
-    env_graph = Environment.SumoEnv(device)
-    env_graph = env_graph.unwrapped
-    writer.add_graph(DuelingNetwork(env_graph.state_shape, env_graph.action_space.n), (env_graph.reset(),))
-    if env_graph.run_step > 0:
-        env_graph.close()
+    writer = SummaryWriter(comment = '-VSL-Dueling')
+    net = DuelingNetwork(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
-    agents = agent.DQNAgent(net, selector, device = device)
+    agents = agent.DQNAgent(net, selector, writer, device = device)
 
     exp_source = experience.ExperienceSourceFirstLast(env, agents, gamma=params['gamma'], steps_count=1)
-    buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
+    buffer = experience.ExperienceReplayBuffer(exp_source, params['replay_size'])
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
     frame_idx = 0
+    #beta = BETA_START
+
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print("=> Loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            frame_idx = checkpoint['frame']
+            loss_v = checkpoint['Loss']
+            net.load_state_dict(checkpoint['state_dict'])
+            optimizer = checkpoint['optimizer']
+            print("=> Checkpoint loaded '{}' (frame: {})".format(args.resume, checkpoint['frame']))
+        else:
+            print("=> No such checkpoint at '{}'".format(args.resume))
 
     with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
             frame_idx += 1
             buffer.populate(1)
             epsilon_tracker.frame(frame_idx)
+            #beta = min(1.0, BETA_START + frame_idx * (1.0 - BETA_START) / BETA_FRAMES)
 
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
+                #writer.add_scalar("beta", beta, frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     env.close()
                     break
+
+            #Demonstrate function -> Visualization
+            '''if frame_idx % 5000 == 0:  #start evaluation
+                for i in range(3): 
+                    evaluation_agent(device, net)'''
 
             if len(buffer) < params['replay_initial']:
                 continue
 
             optimizer.zero_grad()
-            batch = buffer.sample(params['batch_size'], beta = 0.4)
+            batch = buffer.sample(params['batch_size'])
             loss_v = utils.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], device=device)
             loss_v.backward()
             optimizer.step()
 
             #Writer function -> Tensorboard file
             writer.add_scalar("Loss", loss_v, frame_idx)
-
-            #Demonstrate function -> Visualization
-            '''if frame_idx % 5000 == 0:  #start evaluation
-                for i in range(3): 
-                    evaluation_agent(device, net)'''
             
             #saving model
-            if frame_idx % 10000 == 0:
-                pass
+            if frame_idx % 1000 == 0:
+                torch.save({
+                    'frame': frame_idx + 1,
+                    'Loss': loss_v,
+                    'state_dict': net.state_dict(),
+                    'optimizer': optimizer
+                }, 'saved_network/checkpoint.tar')
             
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
@@ -134,9 +162,8 @@ def DQNAgent():
 if __name__ == '__main__':
     DQNAgent()
 
-def evaluation_agent(device, neural_network):
-    env_evalo = Environment.SumoEnv(evaluation = True)
-    eval_writer = SummaryWriter(log_dir = './logs/evaluation', comment = '-Variable-Speed-Controller-Dueling')
+def demonstration_agent(device, neural_network):
+    env_evalo = Environment.SumoEnv(demonstration= True)
     eval_selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     eval_epsilon_tracker = tracker.EpsilonTracker(eval_selector, params)
     eval_agent = agent.DQNAgent(neural_network, eval_selector, device = device)

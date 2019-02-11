@@ -15,7 +15,7 @@ from collections import deque
 from sumolib import checkBinary
 
 #Environment Constants
-STATE_SHAPE = (3, 27, 441)      
+STATE_SHAPE = (81, 441, 1)      
 WARM_UP_TIME = 18 * 1e2
 END_TIME = 108 * 1e2
 VEHICLE_MEAN_LENGTH = 5
@@ -24,13 +24,12 @@ speeds = [11.11, 13.88, 16.67, 19.44, 22.22]  # possible actions collection
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, device, frameskip = 3, demonstration = False):
+    def __init__(self, frameskip = 3, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
         self.demonstration = demonstration
-        self.device = device
         self.frameskip = frameskip
 
         self.run_step = 0
@@ -59,7 +58,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         net_tree = ET.parse("./project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
-        self.state_shape = (3, len(self.lane_list), 441)
+        #self.state_shape = (3, len(self.lane_list), 441)
+        self.observation_space = spaces.Box(low= -1, high=100, shape=(3 * len(self.lane_list), 441, 1), dtype=np.float32)
 
         # initialize lanearea_dec_list
         dec_tree = ET.parse("./project/ramp.add.xml")
@@ -74,6 +74,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             for speed in speeds:
                 self.action_set[i] = [lanearea,speed]
                 i += 1
+        #print(self.action_set)
         self.action_space = spaces.Discrete(len(self.action_set))
 
         # initialize vehicle_list and vehicle_position
@@ -83,10 +84,12 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             self.vehicle_position.append(dict())
             for lane in net_tree.iter("lane"):
                 self.vehicle_list[run_step][lane.attrib["id"]]=list()
-                lane_shape = lane.attrib["shape"]
                 
                 self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 2)
             run_step += 1
+    
+    def status(self):
+        return self.run_step
     
     def is_episode(self):
         if self.run_step == END_TIME:
@@ -143,7 +146,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         vehicle_position = np.zeros((len(self.lane_list),441),dtype = np.float32)
         vehicle_speed = np.zeros((len(self.lane_list),441),dtype = np.float32)
         vehicle_acceleration = np.zeros((len(self.lane_list),441),dtype = np.float32)
-        state = np.empty((1, 3, len(self.lane_list), 441), dtype = np.float32)
+        state = np.empty((1, 3* len(self.lane_list), 441), dtype = np.float32)
         #self.state_shape = torch.from_numpy(state).shape if device == "cuda" else state.shape
     
         for lane in self.lane_list:
@@ -167,10 +170,10 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             vehicle_position[lane_index][vehicle_index] = 1.0
             vehicle_speed[lane_index][vehicle_index] = traci.vehicle.getSpeed(vehicle) 
             vehicle_acceleration[lane_index][vehicle_index] = traci.vehicle.getAcceleration(vehicle)
-        state[0][0] = vehicle_position 
-        state[0][1] = vehicle_speed 
-        state[0][2] = vehicle_acceleration
-        return torch.from_numpy(state)
+        state[0] = np.concatenate((vehicle_position, vehicle_speed, vehicle_acceleration), axis= 0)
+        state = np.swapaxes(state, 2, 0)
+        #print(state.shape)
+        return state
     
  
     def step_reward(self):

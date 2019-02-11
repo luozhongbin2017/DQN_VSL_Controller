@@ -4,19 +4,19 @@
     <route id="from_ramp" edges="ramp_load ramp merging mainline_down"/>
     <route id="from_mainline" edges="mainline_load mainline_up merging mainline_down"/>
 
-    <flow begin="0"    end="1800"  departPos="0" id="volume_from_ramp_1" departSpeed="random" vehsPerHour="800"  route="from_ramp" type="car"/>
+    <flow begin="0"    end="1800"  departPos="0" id="volume_from_ramp_1" departSpeed="random" vehsPerHour="2000"  route="from_ramp" type="car"/>
     <flow begin="0"    end="1800"  departPos="random" departLane="random" departSpeed="max" id="volume_from_mainline_1" vehsPerHour="4700"  route="from_mainline" type="car"/>
 
-    <flow begin="1800" end="3600"  departPos="0" id="volume_from_ramp_2" departSpeed="random" vehsPerHour="1200"  route="from_ramp" type="car"/>
+    <flow begin="1800" end="3600"  departPos="0" id="volume_from_ramp_2" departSpeed="random" vehsPerHour="2200"  route="from_ramp" type="car"/>
     <flow begin="1800" end="3600"  departPos="random" departLane="random" departSpeed="max" id="volume_from_mainline_2" vehsPerHour="5000"  route="from_mainline" type="car"/>
 
-    <flow begin="3600" end="5400"  departPos="0" id="volume_from_ramp_3" departSpeed="random" vehsPerHour="1600" route="from_ramp" type="car"/>
+    <flow begin="3600" end="5400"  departPos="0" id="volume_from_ramp_3" departSpeed="random" vehsPerHour="2000" route="from_ramp" type="car"/>
     <flow begin="3600" end="5400"  departPos="random" departLane="random" departSpeed="max" id="volume_from_mainline_3" vehsPerHour="5000"  route="from_mainline" type="car"/>
 
-    <flow begin="5400" end="7200"  departPos="0" id="volume_from_ramp_4" departSpeed="random" vehsPerHour="2000" route="from_ramp" type="car"/>
+    <flow begin="5400" end="7200"  departPos="0" id="volume_from_ramp_4" departSpeed="random" vehsPerHour="2400" route="from_ramp" type="car"/>
     <flow begin="5400" end="7200"  departPos="random" departLane="random" departSpeed="max" id="volume_from_mainline_4" vehsPerHour="4800"  route="from_mainline" type="car"/>
 
-    <flow begin="7200" end="9000"  departPos="0" id="volume_from_ramp_5" departSpeed="random" vehsPerHour="2400"  route="from_ramp" type="car"/>
+    <flow begin="7200" end="9000"  departPos="0" id="volume_from_ramp_5" departSpeed="random" vehsPerHour="2000"  route="from_ramp" type="car"/>
     <flow begin="7200" end="9000"  departPos="random" departLane="random" departSpeed="max" id="volume_from_mainline_5" vehsPerHour="4700"  route="from_mainline" type="car"/>
 
     <flow begin="9000" end="10800" departPos="0" id="volume_from_ramp_6" departSpeed="random" vehsPerHour="2800"  route="from_ramp" type="car"/>
