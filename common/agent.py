@@ -36,7 +36,7 @@ def default_states_preprocessor(states):
     :param states: list of numpy arrays with states
     :return: Variable
     """
-    if len(states) == 1:
+    if len(states) == 0:
         np_states = np.expand_dims(states[0], 0)
     else:
         np_states = np.array([np.array(s, copy=False) for s in states], copy=False)
@@ -61,10 +61,11 @@ class DQNAgent(BaseAgent):
         if agent_states is None:
             agent_states = [None] * len(states)
         if self.preprocessor is not None:
+            #print('type(states):', (states))
             states = self.preprocessor(states)
             if torch.is_tensor(states):
                 states = states.to(self.device)
-        q_v = self.dqn_model(states)
+        q_v = self.dqn_model(states[0])
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
         return actions, agent_states

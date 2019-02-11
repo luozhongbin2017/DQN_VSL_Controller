@@ -8,8 +8,8 @@ import torch.nn as nn
 Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
-        'stop_reward':      100,  # Modifiable
-        'stop_frame':       999999999999,  #Modifiable
+        'stop_reward':      100000,  # Modifiable
+        'stop_frame':       50000000,  #Modifiable
         
         ### MEMORY HYPERPARAMETERS
         'replay_size':      100000,

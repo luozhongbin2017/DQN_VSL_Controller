@@ -82,7 +82,7 @@
 
     <tlLogic id="merging_start" type="static" programID="0" offset="0">
         <phase duration="45" state="GGGG"/>
-        <phase duration="15" state="yGGG"/>
+        <phase duration="15" state="GGGG"/>
     </tlLogic>
 
     <junction id="mainline_end" type="dead_end" x="-336.73" y="19.30" incLanes="mainline_down_0 mainline_down_1 mainline_down_2" intLanes="" shape="-337.40,29.13 -336.73,19.35"/>

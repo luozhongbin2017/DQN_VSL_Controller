@@ -261,3 +261,17 @@ class PrioritizedReplayBuffer(ExperienceReplayBuffer):
             self._it_min[idx] = priority ** self._alpha
 
             self._max_priority = max(self._max_priority, priority)
+
+def _group_list(items, lens):
+    """
+    Unflat the list of items by lens
+    :param items: list of items
+    :param lens: list of integers
+    :return: list of list of items grouped by lengths
+    """
+    res = []
+    cur_ofs = 0
+    for g_len in lens:
+        res.append(items[cur_ofs:cur_ofs+g_len])
+        cur_ofs += g_len
+    return res

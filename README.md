@@ -117,4 +117,36 @@ modified:(correct?)
 
         return self.update_observation()
 
-3. Model saving function appended.
+3. Model saving function needs to be appended.
+
+Log Feb 11th, 2019
+1. step_reward modified.
+previous:
+def step_reward(self):
+
+        queue_len = [0] * len(self.lane_list)
+        i = 0
+        for lane in self.lane_list:
+            j = len(self.vehicle_position[self.run_step][lane])
+            while True:
+                if self.vehicle_position[self.run_step][lane][j] == 1:
+                    queue_len[i] += 1
+                else:
+                    break
+            i+=1
+
+        i = 0
+        vehicle_sum = 0
+        queue_len_sum = 0
+        while i < len(self.lane_list):
+            queue_len_sum+=queue_len[i]
+            i += 1
+        
+        for lane in self.lane_list:
+            vehicle_sum += len(traci.lane.getLastStepVehicleIDs(lane))
+
+        U = queue_len_sum + vehicle_sum
+        
+        return -(1 * U/3600 - self.pre_reward)
+
+modified:

@@ -29,42 +29,64 @@ class CreateNetwork(nn.Module):
     """
     Create a neural network to convert image data
     """
-    def __init__ (self, input_shape, n_actions):
+    def __init__(self, input_shape, n_actions):
         super(CreateNetwork, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=1, stride=1),
+            nn.ReLU()
+        )
+
+        #print('input_shape[0]: ', input_shape[0])
+        conv_out_size = self._get_conv_out(input_shape)
         self.fc_adv = nn.Sequential(
-            nn.Linear(input_shape[0], 512),
+            nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, n_actions)
         )
         self.fc_val = nn.Sequential(
-            nn.Linear(input_shape[0], 512),
+            nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, 1)
         )
 
+    def _get_conv_out(self, shape):
+        #print('1, *shape: ', torch.zeros(1, *shape).size())
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
     def forward(self, x):
-        val = self.fc_val(x)
-        adv = self.fc_adv(x)
-        return val + adv - adv.mean() #action_value
+        fx = x.float()
+        #print(x.size())
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        val = self.fc_val(conv_out)
+        adv = self.fc_adv(conv_out)
+        return val + adv - adv.mean()
 
 #Training
 def DQNAgent():
     print("Cuda's availability is %s" % torch.cuda.is_available())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    env_traino = Environment.SumoEnv()  ###This IO needs to be modified
+    env_traino = Environment.SumoEnv(device)  ###This IO needs to be modified
     env_traino = env_traino.unwrapped
+    #print(env_traino.state_shape)
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
     writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
     net = CreateNetwork(env_traino.state_shape, env_traino.action_space.n).to(device)
-    writer.add_graph(CreateNetwork(env_traino.state_shape, env_traino.action_space.n), torch.FloatTensor(env_traino.reset()))
+    writer.add_graph(CreateNetwork(env_traino.state_shape, env_traino.action_space.n), env_traino.reset())
+    env_traino.close()
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
-    agent = agent.DQNAgent(net, selector, device = device)
+    agents = agent.DQNAgent(net, selector, device = device)
 
-    exp_source = experience.ExperienceSourceFirstLast(env_traino, agent, gamma=params['gamma'], steps_count=1)
+    exp_source = experience.ExperienceSourceFirstLast(env_traino, agents, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
@@ -79,13 +101,14 @@ def DQNAgent():
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
+                    env_traino.close()
                     break
 
             if len(buffer) < params['replay_initial']:
                 continue
 
             optimizer.zero_grad()
-            batch = buffer.samplse(params['batch_size'], beta = 0.4)
+            batch = buffer.sample(params['batch_size'], beta = 0.4)
             loss_v = utils.calc_loss_dqn(batch, net, tgt_net.target_model, gamma=params['gamma'], device=device)
             loss_v.backward()
             optimizer.step()
@@ -94,9 +117,9 @@ def DQNAgent():
             writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
 
             #Evaluation function -> Tensorboard file
-            if frame_idx % 5000 == 0:  #start evaluation
+            '''if frame_idx % 5000 == 0:  #start evaluation
                 for i in range(3): 
-                    evaluation_agent(device, net)
+                    evaluation_agent(device, net)'''
             
             #saving model
             if frame_idx % 10000 == 0:
