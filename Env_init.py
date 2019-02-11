@@ -33,6 +33,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
         self.run_step = 0
         self.lane_list = list()
+        self.edge_list = list()
         self.vehicle_list = list()
         self.vehicle_position = list()
         self.lanearea_dec_list = list()
@@ -51,7 +52,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.sumoBinary = "sumo"
         self.projectFile = './project/'    
 
-        # initialize lane_list
+        # initialize lane_list and edge_list
         net_tree = ET.parse("./project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
@@ -129,24 +130,29 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             lane_map[i]=lane
             i+=1
 
-        vehicle_position=list()
-        i=0
-        while i < len(self.lane_list):
-            vehicle_position.append(self.vehicle_position[self.run_step][lane_map[i]])
-            i+=1
+        vehicle_position = np.zeros((len(self.lane_list),441),dtype = np.float32)
+        vehicle_speed = np.zeros((len(self.lane_list),441),dtype = np.float32)
+        vehicle_acceleration = np.zeros((len(self.lane_list),441),dtype = np.float32)
+    
+        for lane in self.lane_list:
+            lane_index = lane_map.index(lane)
+            lane_len = traci.lane.getLength(lane)
+            lane_stop = int (lane_len / VEHICLE_MEAN_LENGTH)
+            for i in range(lane_stop, 440):
+                vehicle_position[lane_index][i] = vehicle_speed[lane_index][i] = vehicle_acceleration[lane_index][i] = -1.0
 
         current_step_vehicle = list()
         for lane in self.lane_list:
             current_step_vehicle += self.vehicle_list[self.run_step][lane]
 
-        vehicle_speed = vehicle_position
-        vehicle_acceleration = vehicle_position
         for vehicle in current_step_vehicle:
             vehicle_in_lane = traci.vehicle.getLaneID(vehicle)
-            lane_index = lane_map.index(lane)
+            lane_index = lane_map.index(vehicle_in_lane)
             vehicle_pos= traci.vehicle.getPosition(vehicle)
             lane_shape = traci.lane.getShape(vehicle_in_lane)
-            vehicle_index = abs(int(vehicle_pos[0]/VEHICLE_MEAN_LENGTH))
+            vehicle_index = abs(int((vehicle_pos[0]-lane_shape[0][0])/VEHICLE_MEAN_LENGTH))
+
+            vehicle_position[lane_index][vehicle_index] = 1.0
             vehicle_speed[lane_index][vehicle_index] = traci.vehicle.getSpeed(vehicle) 
             vehicle_acceleration[lane_index][vehicle_index] = traci.vehicle.getAcceleration(vehicle)
         state = (vehicle_position, vehicle_speed, vehicle_acceleration)
