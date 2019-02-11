@@ -24,13 +24,14 @@ speeds = [11.11, 13.88, 16.67, 19.44, 22.22]  # possible actions collection
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, device, frameskip = 3, evaluation = False):
+    def __init__(self, device, frameskip = 3, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
-        self.evaluation = evaluation
+        self.demonstration = demonstration
         self.device = device
+        self.frameskip = frameskip
 
         self.run_step = 0
         self.lane_list = list()
@@ -41,7 +42,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_max_speed = dict()
         self.action_set = dict()
         self.waiting_time = 0.0
-        self.death_factor = 0.175
+        self.death_factor = 0.001
 
         # initialize sumo path
         
@@ -89,19 +90,19 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     
     def is_episode(self):
         if self.run_step == END_TIME:
-            traci.close()
+            traci.close(False)
             return True
         if self.run_step % 1800 == 0:
-            self.death_factor -= 0.025
-            print('phase: %d' % (self.run_step / 1800), ' step: %d' % self.run_step)
+            self.death_factor -= 0.0002
+            print('phase: %d' % (self.run_step / 1800 + 1), ' step: %d' % self.run_step)
         for lanearea_dec in self.lanearea_dec_list:
             dec_length = 0
             jam_length = 0
             dec_length += traci.lanearea.getLength(lanearea_dec)
             jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
             if (dec_length * self.death_factor) < jam_length:
-                print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800))
-                traci.close()
+                print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
+                traci.close(False)
                 return True
         return False
 
@@ -180,7 +181,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             #print(traci.lane.getWaitingTime(lane))
             wt.append(traci.lane.getWaitingTime(lane))
         self.waiting_time += np.sum(wt)
-        reward = -np.sum(wt) if np.sum(wt) != 0 else 10
+        reward = -10 if np.sum(wt) != 0 else 1
         #print(reward)
         return reward
     
@@ -202,22 +203,23 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         action = self.action_set[a]
         self.lanearea_max_speed[action[0]]=action[1]
         self.reset_vehicle_maxspeed()
+        for _ in range(self.frameskip):
+            reward += self.step_reward()
+            traci.simulationStep()
+            self.run_step += 1
         observation = self.update_observation()
-        reward = self.step_reward()
-
-        self.run_step += 1
-        traci.simulationStep()
+        #print(a, reward)
         return observation, reward, self.is_episode(), {"Waiting_time": self.waiting_time}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
-        if self.evaluation == False:
+        if self.demonstration == False:
             seed = self.seed()[1]
             traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='training')
             self.scenario = traci.getConnection('training')
         else:
             seed = self.seed()[1]
-            traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='evaluation')
+            traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='demonstration')
             self.scenario = traci.getConnection('evaluation')
 
         self.warm_up_simulation()
@@ -239,5 +241,4 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     
     def closer(self):
         #Meant for forced close ops.
-        
-        traci.close()
+        traci.close(False)

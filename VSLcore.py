@@ -8,7 +8,6 @@ Created on Sun Jan  6 13:36:09 2019
 #Import Modules
 import argparse
 import numpy as np
-import Env_init as Environment
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,9 +15,9 @@ import os,sys
 sys.path.append("lib")
 sys.path.append("common")
 
+import Env_init as Environment
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-from lib import ptan
 from common import action, agent, utils, experience, tracker, wrapper
 
 #Global Variable:
@@ -72,21 +71,24 @@ def DQNAgent():
     print("Cuda's availability is %s" % torch.cuda.is_available())
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    env_traino = Environment.SumoEnv(device)  ###This IO needs to be modified
-    env_traino = env_traino.unwrapped
+    env = Environment.SumoEnv(device)  ###This IO needs to be modified
+    env = env.unwrapped
     #print(env_traino.state_shape)
     #env = wrapper.wrap_dqn(env_traino, stack_frames = 3)  ###wrapper needs to be modified
 
-    writer = SummaryWriter(log_dir = './logs/training', comment = '-Variable-Speed-Controller-Dueling')
-    net = CreateNetwork(env_traino.state_shape, env_traino.action_space.n).to(device)
-    writer.add_graph(CreateNetwork(env_traino.state_shape, env_traino.action_space.n), env_traino.reset())
-    env_traino.close()
+    writer = SummaryWriter(comment = '-VSL-Dueling-')
+    net = CreateNetwork(env.state_shape, env.action_space.n).to(device)
+    env_graph = Environment.SumoEnv(device)
+    env_graph = env_graph.unwrapped
+    writer.add_graph(CreateNetwork(env_graph.state_shape, env_graph.action_space.n), env_graph.reset())
+    if env_graph.run_step > 0:
+        env_graph.close()
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
     agents = agent.DQNAgent(net, selector, device = device)
 
-    exp_source = experience.ExperienceSourceFirstLast(env_traino, agents, gamma=params['gamma'], steps_count=1)
+    exp_source = experience.ExperienceSourceFirstLast(env, agents, gamma=params['gamma'], steps_count=1)
     buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
     optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
 
@@ -101,7 +103,7 @@ def DQNAgent():
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
-                    env_traino.close()
+                    env.close()
                     break
 
             if len(buffer) < params['replay_initial']:
@@ -114,9 +116,9 @@ def DQNAgent():
             optimizer.step()
 
             #Writer function -> Tensorboard file
-            writer.add_scalars('Training', {'Loss': loss_v, 'Total Reward': new_rewards[0]}, global_step = frame_idx)
+            writer.add_scalar("Loss", loss_v, frame_idx)
 
-            #Evaluation function -> Tensorboard file
+            #Demonstrate function -> Visualization
             '''if frame_idx % 5000 == 0:  #start evaluation
                 for i in range(3): 
                     evaluation_agent(device, net)'''
