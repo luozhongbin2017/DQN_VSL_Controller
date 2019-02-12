@@ -9,7 +9,7 @@ import numpy as np
 from collections import namedtuple, deque
 
 from .agent import BaseAgent
-import utils
+from . import utils
 
 # one single experience step
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done'])

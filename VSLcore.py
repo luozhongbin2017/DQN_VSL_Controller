@@ -15,7 +15,7 @@ import os,sys
 sys.path.append("lib")
 sys.path.append("common")
 
-import Env_init as Env
+from env import Env
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from common import action, agent, utils, experience, tracker, wrapper

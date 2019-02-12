@@ -1,7 +1,6 @@
 # Environment Construction
 import numpy as np
 import os,sys
-sys.path.append("lib")
 import xml.etree.ElementTree as ET
 
 import cmath
@@ -57,14 +56,14 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.projectFile = './project/'    
 
         # initialize lane_list and edge_list
-        net_tree = ET.parse("./project/ramp.net.xml")
+        net_tree = ET.parse("/env/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
         #self.state_shape = (3, len(self.lane_list), 441)
         self.observation_space = spaces.Box(low= -1, high=100, shape=(3 * len(self.lane_list), 441, 1), dtype=np.float32)
 
         # initialize lanearea_dec_list
-        dec_tree = ET.parse("./project/ramp.add.xml")
+        dec_tree = ET.parse("/env/ramp.add.xml")
         for lanearea_dec in dec_tree.iter("laneAreaDetector"):
             self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
  
