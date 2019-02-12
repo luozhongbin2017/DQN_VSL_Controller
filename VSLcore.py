@@ -18,7 +18,7 @@ sys.path.append("common")
 import Env_init as Env
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-from common import actions, agent, utils, experience, tracker, wrapper
+from common import action, agent, utils, experience, tracker, wrapper
 
 #Global Variable:
 parser = argparse.ArgumentParser() 
@@ -40,7 +40,7 @@ class DuelingNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=2, stride=1),
+            nn.Conv2d(64, 64, kernel_size=2, stride=1),
             nn.ReLU()
         )
 
@@ -85,12 +85,12 @@ def DQNAgent():
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper needs to be modified
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper needs to be modified
     #print(env.observation_space.shape)
 
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = agent.TargetNet(net)
-    selector = actions.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
+    selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
     agents = agent.DQNAgent(net, selector, writer, device = device)
 

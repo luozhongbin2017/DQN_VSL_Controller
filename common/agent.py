@@ -5,7 +5,7 @@ import copy
 import numpy as np
 import torch
 import torch.nn.functional as F
-from . import actions
+import actions
 
 
 class BaseAgent:
