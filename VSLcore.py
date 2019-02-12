@@ -23,12 +23,9 @@ from common import action, agent, utils, experience, tracker, wrapper
 #Global Variable:
 parser = argparse.ArgumentParser() 
 parser.add_argument("--gpu", default = None, type = int, help= 'GPU id to use.')
-parser.add_argument("--resume", default = 'saved_network/checkpoint.tar', type = str, help= 'path to latest checkpoint')
+#parser.add_argument("--resume", default = None, type = str, metavar= path, help= 'path to latest checkpoint')
 args = parser.parse_args()
 params = utils.Constants
-PRIO_REPLAY_ALPHA = 0.6
-BETA_START = 0.4
-BETA_FRAMES = 100000
 
 #Build Up Dueling Neural Network
 class DuelingNetwork(nn.Module):
@@ -75,13 +72,14 @@ class DuelingNetwork(nn.Module):
 
 #Training
 def DQNAgent():
+    path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + "AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.is_available():
         args.gpu = int(input("Please assign a gpu core: "))
-    if args.gpu is not None:
-        print("Now using GPU CORE #{} for training".format(args.gpu))
-        torch.cuda.set_device(args.gpu)
+        if args.gpu is not None:
+            torch.cuda.set_device(args.gpu)
+        print("Now using GPU CORE #{} for training".format(torch.cuda.current_device()))
     
     writer = SummaryWriter(comment = '-VSL-Dueling')
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
@@ -103,17 +101,18 @@ def DQNAgent():
     frame_idx = 0
     #beta = BETA_START
 
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> Loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
+    if path:
+        if os.path.isfile(path):
+            print("=> Loading checkpoint '{}'".format(path))
+            checkpoint = torch.load(path)
             frame_idx = checkpoint['frame']
             loss_v = checkpoint['Loss']
             net.load_state_dict(checkpoint['state_dict'])
             optimizer = checkpoint['optimizer']
-            print("=> Checkpoint loaded '{}' (frame: {})".format(args.resume, checkpoint['frame']))
+            print("=> Checkpoint loaded '{}' (frame: {})".format(path, checkpoint['frame']))
+            net.train()
         else:
-            print("=> No such checkpoint at '{}'".format(args.resume))
+            print("=> No such checkpoint at '{}'".format(path))
 
     with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
@@ -125,6 +124,8 @@ def DQNAgent():
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 #writer.add_scalar("beta", beta, frame_idx)
+                for name, netparam in net.named_parameters():
+                    writer.add_histogram(name, netparam.clone().cpu().data.numpy(), frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     env.close()
                     break
@@ -147,13 +148,14 @@ def DQNAgent():
             writer.add_scalar("Loss", loss_v, frame_idx)
             
             #saving model
-            if frame_idx % 1000 == 0:
+            if frame_idx % 1000== 0:
                 torch.save({
                     'frame': frame_idx + 1,
                     'Loss': loss_v,
                     'state_dict': net.state_dict(),
                     'optimizer': optimizer
-                }, 'saved_network/checkpoint.tar')
+                }, path)
+                print("Network saved at %s" % path)
             
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target

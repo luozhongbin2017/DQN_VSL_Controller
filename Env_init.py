@@ -92,7 +92,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     
     def getstatus(self):
         self.writer.add_scalar('Waiting time', self.waiting_time)
-        self.writer.add_scalar('Congestion ratio,' self.ratio)
+        self.writer.add_scalar('Congestion ratio', self.ratio)
     
     def is_episode(self):
         if self.run_step == END_TIME:

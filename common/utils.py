@@ -21,6 +21,11 @@ Constants = {
         'epsilon_final':    0.01,  # minimum exploration probability
         'learning_rate':    0.00001, # exponential decay rate for exploration prob
 
+        #Prio-learning factors
+        'PRIO_REPLAY_ALPHA': 0.6,
+        'BETA_START': 0.4,
+        'BETA_FRAMES': 100000,
+
         # Q LEARNING hyperparameters
         'gamma':            0.99,  # Discounting rate
 
