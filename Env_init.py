@@ -16,21 +16,22 @@ from sumolib import checkBinary
 
 #Environment Constants
 STATE_SHAPE = (81, 441, 1)      
-WARM_UP_TIME = 18 * 1e2
-END_TIME = 108 * 1e2
+WARM_UP_TIME = 3 * 1e2
+END_TIME = 105 * 1e2
 VEHICLE_MEAN_LENGTH = 5
 speeds = [11.11, 13.88, 16.67, 19.44, 22.22]  # possible actions collection
 
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, frameskip = 3, demonstration = False):
+    def __init__(self, writer, frameskip = 3, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
         self.demonstration = demonstration
         self.frameskip = frameskip
+        self.writer = writer
 
         self.run_step = 0
         self.lane_list = list()
@@ -42,6 +43,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.action_set = dict()
         self.waiting_time = 0.0
         self.death_factor = 0.001
+        self.ratio = 0.0
 
         # initialize sumo path
         
@@ -51,7 +53,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         else:
             sys.exit("please declare environment variable 'SUMO_HOME'")
 
-        self.sumoBinary = "sumo"
+        self.sumoBinary = " "
         self.projectFile = './project/'    
 
         # initialize lane_list and edge_list
@@ -88,11 +90,14 @@ class SumoEnv(gym.Env):       ###It needs to be modified
                 self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 2)
             run_step += 1
     
-    def status(self):
-        return self.run_step
+    def getstatus(self):
+        self.writer.add_scalar('Waiting time', self.waiting_time)
+        self.writer.add_scalar('Congestion ratio,' self.ratio)
     
     def is_episode(self):
         if self.run_step == END_TIME:
+            print('You survived! Simulation end at phase %d' % (self.run_step / 1800 + 1))
+            self.getstatus()
             traci.close(False)
             return True
         if self.run_step % 1800 == 0:
@@ -103,10 +108,12 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             jam_length = 0
             dec_length += traci.lanearea.getLength(lanearea_dec)
             jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
-            if (dec_length * self.death_factor) < jam_length:
-                print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
-                traci.close(False)
-                return True
+        self.ratio = jam_length / dec_length
+        if self.death_factor < self.ratio:
+            print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
+            self.getstatus()
+            traci.close(False)
+            return True
         return False
 
     def warm_up_simulation(self):
@@ -217,10 +224,12 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
         if self.demonstration == False:
+            self.sumoBinary = "sumo"
             seed = self.seed()[1]
             traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='training')
             self.scenario = traci.getConnection('training')
         else:
+            self.sumoBinary = "sumo-gui"
             seed = self.seed()[1]
             traci.start([self.sumoBinary, '-c', self.projectFile + 'ramp.sumo.cfg', '--start','--seed', str(seed), '--quit-on-end'], label='demonstration')
             self.scenario = traci.getConnection('evaluation')

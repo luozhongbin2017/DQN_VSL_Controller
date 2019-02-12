@@ -28,8 +28,8 @@ class RewardTracker:
         #print('self.total_rewards:', self.total_rewards)
         mean_reward = np.mean(self.total_rewards[-100:])
         epsilon_str = "" if epsilon is None else ", eps %.2f" % epsilon
-        print("%d: Having done %d episode(s), mean reward %.3f, speed %.2f f/s%s" % (
-            frame, len(self.total_rewards), mean_reward, speed, epsilon_str
+        print("%d: Just done %d episode(s), mean reward %d, speed %.2f f/s%s" % (
+            frame, len(self.total_rewards),mean_reward, speed, epsilon_str
         ))
         sys.stdout.flush()
         if epsilon is not None:
@@ -38,7 +38,7 @@ class RewardTracker:
         self.writer.add_scalar("reward_100", mean_reward, frame)
         self.writer.add_scalar("reward", reward, frame)
         if mean_reward > self.stop_reward or  frame > self.stop_frame:
-            print("Task finished in %d steps!" % frame)
+            print("Training finished in %d steps!" % frame)
             return True
         return False
 

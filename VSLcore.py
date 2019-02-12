@@ -15,7 +15,7 @@ import os,sys
 sys.path.append("lib")
 sys.path.append("common")
 
-import Env_init as Environment
+import Env_init as Env
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from common import action, agent, utils, experience, tracker, wrapper
@@ -82,14 +82,14 @@ def DQNAgent():
     if args.gpu is not None:
         print("Now using GPU CORE #{} for training".format(args.gpu))
         torch.cuda.set_device(args.gpu)
-
-    env = Environment.SumoEnv()  ###This IO needs to be modified
+    
+    writer = SummaryWriter(comment = '-VSL-Dueling')
+    env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
     env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper needs to be modified
     #print(env.observation_space.shape)
 
-    writer = SummaryWriter(comment = '-VSL-Dueling')
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])

@@ -104,6 +104,10 @@ class MaxAndSkipEnv(gym.Wrapper):
         # most recent raw observations (for max pooling across time steps)
         self._obs_buffer = deque(maxlen=2)
         self._skip = skip
+        self.env = env
+
+    def status(self):
+        return self.env.getstatus()
 
     def step(self, action):
         total_reward = 0.0
@@ -176,6 +180,7 @@ class FrameStack(gym.Wrapper):
         baselines.common.atari_wrappers.LazyFrames
         """
         gym.Wrapper.__init__(self, env)
+        self.status = env.status
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
@@ -210,6 +215,7 @@ class ImageToPyTorch(gym.ObservationWrapper):
     """
     def __init__(self, env):
         super(ImageToPyTorch, self).__init__(env)
+        self.status = env.status()
         old_shape = self.observation_space.shape
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]),
                                                 dtype=np.float32)

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 02/11/19 00:59:09 by Eclipse SUMO GUI Version 1.0.1
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="D:\Softwares\Eclipse\Sumo\tools\game\ramp/ramp.net.xml"/>
+        <route-files value="D:\Softwares\Eclipse\Sumo\tools\game\ramp/ramp.rou.xml"/>
+        <additional-files value="D:\Softwares\Eclipse\Sumo\tools\game\input_additional.add.xml"/>
+    </input>
+
+    <time>
+        <begin value="0"/>
+        <end value="400"/>
+        <step-length value=".2"/>
+    </time>
+
+    <gui_only>
+        <gui-settings-file value="D:\Softwares\Eclipse\Sumo\tools\game\ramp/ramp_settings.xml"/>
+        <tracker-interval value="0.2"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<tlsStates xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tlsstates_file.xsd">
+    <tlsState time="0.00" id="gneJ16" programID="1" phase="0" state="y"/>
+    <tlsState time="3.00" id="gneJ16" programID="1" phase="1" state="r"/>
+</tlsStates>
