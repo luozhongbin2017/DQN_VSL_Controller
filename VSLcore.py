@@ -40,7 +40,7 @@ class DuelingNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=2, stride=1),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1),
             nn.ReLU()
         )
 
@@ -86,8 +86,8 @@ def DQNAgent():
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper needs to be modified
-    #print(env.observation_space.shape)
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper needs to be modified
+    print(env.observation_space.shape)
 
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = agent.TargetNet(net)
@@ -170,7 +170,7 @@ def DQNAgent():
                 tgt_net.sync()  #Sync q_eval and q_target
     
 
-def demonstrated_agent(device):
+'''def demonstrated_agent(device):
     dem_writer = SummaryWriter(comment = '-VSL-Dueling')
     env_dem= Env.SumoEnv(dem_writer, demonstration= True)
     neural_network = DuelingNetwork(env_dem.observation_space.shape, env_dem.action_space.n).to(device)
@@ -191,14 +191,13 @@ def demonstrated_agent(device):
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 if reward_tracker.reward(new_rewards[0], dem_idx):
-                    break
+                    break'''
 
 if __name__ == '__main__':
-    #dem = input('Demonstrated? y/n ')
+    '''#dem = input('Demonstrated? y/n ')
     dem = 'n'
     #Demonstrate function -> Visualization
     if dem == 'y' or 'Y':
         demonstrated_agent("cuda")
-    else:
-        DQNAgent()
-
+    else:'''
+    DQNAgent()
