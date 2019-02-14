@@ -1,3 +1,11 @@
 
 *.LAPTOP-DAVE
 *.pyc
+*.out
+*.out
+*.out
+*.out
+Project/Output/mainline_eval.out
+Project/Output/ramp_eval.out
+*.out
+Project/Output/ramp_eval.out

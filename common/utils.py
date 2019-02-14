@@ -9,17 +9,17 @@ Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
         'stop_reward':      1800.0,  # Modifiable
-        'stop_frame':       3 * 1e8,  #Modifiable
+        'stop_frame':       50000,  #Modifiable
         
         ### MEMORY HYPERPARAMETERS
         'replay_size':      100000,
-        'replay_initial':   1000,
+        'replay_initial':   10000,
 
         # EXPLORATION HYPERPARAMETERS for epsilon greedy strategy
         'epsilon_frames':   10**5,
         'epsilon_start':    1.0,   # exploration probability at start
-        'epsilon_final':    0.01,  # minimum exploration probability
-        'learning_rate':    0.00001, # exponential decay rate for exploration prob
+        'epsilon_final':    0.02,  # minimum exploration probability
+        'learning_rate':    0.001, # exponential decay rate for exploration prob
 
         #Prio-learning factors
         'PRIO_REPLAY_ALPHA': 0.6,
@@ -35,7 +35,7 @@ Constants = {
         'max_steps':        5000,  # Max possible steps in an episode
 
         # FIXED Q TARGETS HYPERPARAMETERS
-        'max_tau':          10000               #Tau is the C step where we sync our target network   
+        'max_tau':          1000               #Tau is the C step where we sync our target network   
         } 
            
 

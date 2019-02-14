@@ -6,7 +6,6 @@ Created on Sun Jan  6 13:36:09 2019
 """
 
 #Import Modules
-import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -21,10 +20,7 @@ from tensorboardX import SummaryWriter
 from common import action, agent, utils, experience, tracker, wrapper
 
 #Global Variable:
-parser = argparse.ArgumentParser() 
-parser.add_argument("--gpu", default = None, type = int, help= 'GPU id to use.')
 #parser.add_argument("--resume", default = None, type = str, metavar= path, help= 'path to latest checkpoint')
-args = parser.parse_args()
 params = utils.Constants
 
 #Build Up Dueling Neural Network
@@ -36,11 +32,11 @@ class DuelingNetwork(nn.Module):
         super(DuelingNetwork, self).__init__()
 
         self.Convolutional_Layer = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.Conv2d(input_shape[0], 32, kernel_size= 8, stride= 4),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(32, 64, kernel_size= 4, stride= 2),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=2, stride=1),
+            nn.Conv2d(64, 64, kernel_size= 3, stride= 1),
             nn.ReLU()
         )
 
@@ -71,25 +67,28 @@ class DuelingNetwork(nn.Module):
         return val + adv - adv.mean()
 
 #Training
-def DQNAgent():
-    path = os.path.join('./runs/', 'checkpoint.pth')
-    print("CUDA™ is " + "AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if torch.cuda.is_available():
-        c = input("Please assign a gpu core: ")
-        args.gpu = int(c) if c is not '' else 0
-        if args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-        print("Now using GPU CORE #{} for training".format(torch.cuda.current_device()))
-    
+def DQNAgent():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
     env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper needs to be modified
-    print(env.observation_space.shape)
+    #print(env.observation_space.shape)
+    net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
+    
+    path = os.path.join('./runs/', 'checkpoint.pth')
+    print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
+        gpu = int(c) if c is not '' else 0
+        if gpu is not None:
+            torch.cuda.set_device(gpu)
+            torch.set_default_tensor_type('torch.cuda.FloatTensor')
+            net.cuda()
+            torch.backends.cudnn.benchmark = True
+        print("Now using GPU CORE #{} for training".format(torch.cuda.current_device()))
 
-    net = DuelingNetwork(env.observation_space.shape, env.action_space.n).to(device)
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)

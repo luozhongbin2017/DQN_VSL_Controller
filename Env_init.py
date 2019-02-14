@@ -91,8 +91,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             run_step += 1
     
     def getstatus(self):
-        self.writer.add_scalar('Waiting time', self.waiting_time)
         self.writer.add_scalar('Congestion ratio', self.ratio)
+        self.writer.add_scalar('Waiting time', self.waiting_time)
     
     def is_episode(self):
         if self.run_step == END_TIME:
@@ -185,7 +185,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
  
     def step_reward(self):
         #Using waiting_time to present reward.
-
         wt = list()
         for lane in self.lane_list:
             #print(traci.lane.getWaitingTime(lane))
@@ -219,7 +218,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             self.run_step += 1
         observation = self.update_observation()
         #print(a, reward)
-        return observation, reward, self.is_episode(), {"Waiting_time": self.waiting_time}
+        return observation, reward, self.is_episode(), {"Waiting_time": self.waiting_time, "Congestion_ratio": self.ratio}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
