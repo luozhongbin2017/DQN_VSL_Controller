@@ -1,7 +1,7 @@
 # Environment Construction
 import numpy as np
 import os,sys
-sys.path.append("lib")
+sys.path.append("./lib")
 import xml.etree.ElementTree as ET
 
 import cmath
@@ -190,7 +190,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             #print(traci.lane.getWaitingTime(lane))
             wt.append(traci.lane.getWaitingTime(lane))
         self.waiting_time += np.sum(wt)
-        reward = -10 if np.sum(wt) != 0 else 1
+        reward = -1 if np.sum(wt) != 0 else 0.1
         #print(reward)
         return reward
     

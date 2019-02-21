@@ -8,7 +8,7 @@ import torch.nn as nn
 Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
-        'stop_reward':      1800.0,  # Modifiable
+        'stop_reward':      18.0,  # Modifiable
         'stop_frame':       50000,  #Modifiable
         
         ### MEMORY HYPERPARAMETERS
@@ -19,7 +19,7 @@ Constants = {
         'epsilon_frames':   10**5,
         'epsilon_start':    1.0,   # exploration probability at start
         'epsilon_final':    0.02,  # minimum exploration probability
-        'learning_rate':    0.001, # exponential decay rate for exploration prob
+        'learning_rate':    0.02, # exponential decay rate for exploration prob
 
         #Prio-learning factors
         'PRIO_REPLAY_ALPHA': 0.6,

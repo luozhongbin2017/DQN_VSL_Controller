@@ -5,25 +5,26 @@ Created on Sun Jan  6 13:36:09 2019
 @author: ChocolateDave
 """
 
-#Import Modules
+# Import Modules
+import collections
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import os,sys
-sys.path.append("lib")
-sys.path.append("common")
+sys.path.append("./lib")
+sys.path.append("./common")
 
-import Env_init as Env
+import Env as Env
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from common import action, agent, utils, experience, tracker, wrapper
 
-#Global Variable:
+# Global Variable:
 #parser.add_argument("--resume", default = None, type = str, metavar= path, help= 'path to latest checkpoint')
 params = utils.Constants
 
-#Build Up Dueling Neural Network
+# Build Up Neural Network
 class DuelingNetwork(nn.Module):
     """
     Create a neural network to convert image data
@@ -36,7 +37,7 @@ class DuelingNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size= 4, stride= 2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size= 3, stride= 1),
+            nn.Conv2d(64, 128, kernel_size= 3, stride= 1),
             nn.ReLU()
         )
 
@@ -66,13 +67,38 @@ class DuelingNetwork(nn.Module):
         adv = self.Fully_Connected_adv(conv_out)
         return val + adv - adv.mean()
 
-#Training
-def DQNAgent():   
+# Saving model
+def save_model(net, optim, path, frame):
+	state_dict = net.module.state_dict()
+	for key in state_dict.keys():
+		state_dict[key] = state_dict[key].cpu()
+
+	torch.save({
+		'frame': frame,
+		'state_dict': state_dict,
+		'optimizer': optim},
+		path)
+# Load pretrained model
+def load_model(net, path):
+	state_dict = torch.load(path)
+	new_state_dict = collections.OrderedDict()
+	for k, value in state_dict['state_dict'].iteritems():
+		key = "module.{}".format(k)
+		new_state_dict[key] = value
+	net.load_state_dict(new_state_dict)
+	frame = state_dict['frame']
+	print("Having pre-trained %d frames." % frame)
+	optimizer = state_dict['optimizer']
+	net.train()
+	return net, frame, optimizer
+
+# Training
+def Core():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper needs to be modified
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
     #print(env.observation_space.shape)
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
     
@@ -95,9 +121,8 @@ def DQNAgent():
     agents = agent.DQNAgent(net, selector, writer, device = device)
 
     exp_source = experience.ExperienceSourceFirstLast(env, agents, gamma=params['gamma'], steps_count=1)
-    #buffer = experience.ExperienceReplayBuffer(exp_source, params['replay_size'])
-    buffer = experience.PrioReplayBuffer(exp_source, params['replay_size'],params['PRIO_REPLAY_ALPHA'])
-    optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
+    #buffer = experience.ExperienceReplayBuffer(exp_source, params['replay_size']) # For Regular memory optimization
+    buffer = experience.PrioReplayBuffer(exp_source, params['replay_size'],params['PRIO_REPLAY_ALPHA']) #For Prioritized memory optimization
 
     frame_idx = 0
     beta = params['BETA_START']
@@ -105,15 +130,10 @@ def DQNAgent():
     if path:
         if os.path.isfile(path):
             print("=> Loading checkpoint '{}'".format(path))
-            checkpoint = torch.load(path)
-            frame_idx = checkpoint['frame']
-            beta = checkpoint['Beta']
-            loss_v = checkpoint['Loss']
-            net.load_state_dict(checkpoint['state_dict'])
-            optimizer = checkpoint['optimizer']
-            print("=> Checkpoint loaded '{}' (frame: {})".format(path, checkpoint['frame']))
-            net.train()
+            net, frame_idx, optimizer = load_model(net, path)
+            print("Checkpoint loaded successfully! ")
         else:
+            optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
             print("=> No such checkpoint at '{}'".format(path))
 
     with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
@@ -156,47 +176,11 @@ def DQNAgent():
             
             #saving model
             if frame_idx % 1000== 0:
-                torch.save({
-                    'frame': frame_idx + 1,
-                    'Beta': beta,
-                    'Loss': loss_v,
-                    'state_dict': net.state_dict(),
-                    'optimizer': optimizer
-                }, path)
+                save_model(net, optimizer, path, frame_idx)
                 print("Network saved at %s" % path)
             
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target
-    
-
-'''def demonstrated_agent(device):
-    dem_writer = SummaryWriter(comment = '-VSL-Dueling')
-    env_dem= Env.SumoEnv(dem_writer, demonstration= True)
-    neural_network = DuelingNetwork(env_dem.observation_space.shape, env_dem.action_space.n).to(device)
-    dem_selector = action.ArgmaxActionSelector()
-    dem_epsilon_tracker = tracker.EpsilonTracker(dem_selector, params)
-    dem_agent = agent.DQNAgent(neural_network, dem_selector, dem_writer, device = device)
-    exp_source = experience.ExperienceSourceFirstLast(env_dem, dem_agent, gamma=params['gamma'], steps_count=1)
-    buffer = experience.PrioritizedReplayBuffer(exp_source, buffer_size=params['replay_size'], alpha = 0.6)
-
-    dem_idx = 0
-
-    with tracker.RewardTracker(dem_writer, params['stop_reward'], params['stop_frame']) as reward_tracker:
-        while True:
-            dem_idx += 1
-            buffer.populate(1)
-            dem_epsilon_tracker.frame(dem_idx)
-
-            new_rewards = exp_source.pop_total_rewards()
-            if new_rewards:
-                if reward_tracker.reward(new_rewards[0], dem_idx):
-                    break'''
 
 if __name__ == '__main__':
-    '''#dem = input('Demonstrated? y/n ')
-    dem = 'n'
-    #Demonstrate function -> Visualization
-    if dem == 'y' or 'Y':
-        demonstrated_agent("cuda")
-    else:'''
-    DQNAgent()
+    Core()

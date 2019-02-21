@@ -9,3 +9,7 @@ Project/Output/mainline_eval.out
 Project/Output/ramp_eval.out
 *.out
 Project/Output/ramp_eval.out
+*.out
+*.json
+Project/Output/mainline_eval.out
+Project/Output/ramp_eval.out
