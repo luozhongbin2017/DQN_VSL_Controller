@@ -76,12 +76,11 @@ class DQNAgent(BaseAgent):
         actions = self.action_selector(q)
         
         #Add graph
-        with self.writer:
-            if self.dr:
-                print("=> Drawing neural network graph...")
-                self.writer.add_graph(self.dqn_model, states)
-                print("=> Graph done!")
-                self.dr == False
+        if self.dr:
+            print("=> Drawing neural network graph...")
+            self.writer.add_graph(self.dqn_model, states)
+            print("=> Graph done!")
+            self.dr = False
 
         return actions, agent_states
 

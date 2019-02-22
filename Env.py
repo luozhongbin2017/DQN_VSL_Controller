@@ -66,6 +66,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         dec_tree = ET.parse("./project/ramp.add.xml")
         for lanearea_dec in dec_tree.iter("laneAreaDetector"):
             self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
+            self.lanearea_max_speed[lanearea_dec.attrib["id"]] = 22.22
  
          
 
@@ -75,7 +76,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             for speed in speeds:
                 self.action_set[i] = [lanearea,speed]
                 i += 1
-        #print(self.action_set)
         self.action_space = spaces.Discrete(len(self.action_set))
 
         # initialize vehicle_list and vehicle_position
@@ -96,7 +96,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             return True
         if self.run_step % 1800 == 0:
             self.death_factor -= 0.0002
-            print('phase: %d' % (self.run_step / 1800 + 1), ' step: %d' % self.run_step)
         for lanearea_dec in self.lanearea_dec_list:
             dec_length = 0
             jam_length = 0
@@ -178,7 +177,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     def _getmeanspeed(self):
         ms = list()
         for lane in self.lane_list:
-            ms.append(traci.lanearea.getLastStepMeanSpeed(lane))
+            ms.append(traci.lane.getLastStepMeanSpeed(lane))
         meanspeed = np.mean(ms)
         return meanspeed
 
@@ -202,7 +201,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
                 traci.vehicle.setMaxSpeed(vehicle,max_speed)
         
         for dec_lane in self.lanearea_dec_list:
-            vehicle_list = traci.lane.getLastStepVehicleIDs(dec_lane)
+            vehicle_list = traci.lanearea.getLastStepVehicleIDs(dec_lane)
             max_speed = self.lanearea_max_speed[dec_lane]
             for vehicle in vehicle_list:
                 traci.vehicle.setMaxSpeed(vehicle,max_speed)
@@ -243,7 +242,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
         self.run_step = 0
 
-        self.meanspeed = self._getmeanspeed
+        self.meanspeed = self._getmeanspeed()
 
         return self.update_observation()
     
