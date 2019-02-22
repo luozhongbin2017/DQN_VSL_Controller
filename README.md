@@ -185,19 +185,22 @@ Feb.22, 2019:
 
 2. reward function changed:
     def _getmeanspeed(self):
-        wt = list()
-        for lane in self.lane_list:
-            wt.append(traci.lane.getWaitingTime(lane))
-        self.waiting_time = np.sum(wt)
+        ms = list()
+        for lane in self.lanearea_dec_list:
+            ms.append(traci.lanearea.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        return meanspeed
 
     def step_reward(self):
         #Using waiting_time to present reward.
         reward = 0.0
-        if self.is_episode():
-            reward += -1
+        self.is_done = self.is_episode()
+        if self.is_done:
+            reward -= 1
         else:
-            self._getmeanspeed()
-            if self.waiting_time == 0:
+            ms = self._getmeanspeed()
+            if ms - self.meanspeed >= 0:
                 reward += 0.1
-            reward += 0.6
+            reward += 0.01
+            self.meanspeed = ms
         return reward

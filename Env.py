@@ -40,7 +40,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_dec_list = list()
         self.lanearea_max_speed = dict()
         self.action_set = dict()
-        self.meanspeed = 0.0
+        self.waiting_time = 0.0
         self.death_factor = 0.001
         self.ratio = 0.0
         self.is_done = False
@@ -173,25 +173,24 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         #print(state.shape)
         return state
     
-    def _getmeanspeed(self):
-        ms = list()
-        for lane in self.lanearea_dec_list:
-            ms.append(traci.lanearea.getLastStepMeanSpeed(lane))
-        meanspeed = np.mean(ms)
-        return meanspeed
+    def _getwaitingtime(self):
+        wt = list()
+        for lane in self.lane_list:
+            #print(traci.lane.getWaitingTime(lane))
+            wt.append(traci.lane.getWaitingTime(lane))
+        self.waiting_time = np.sum(wt)
 
     def step_reward(self):
         #Using waiting_time to present reward.
         reward = 0.0
         self.is_done = self.is_episode()
+        self._getwaitingtime()
         if self.is_done:
             reward -= 1
+        elif self.waiting_time > 0:
+            reward -= 0.5
         else:
-            ms = self._getmeanspeed()
-            if ms - self.meanspeed >= 0:
-                reward += 0.1
-            reward += 0.01
-            self.meanspeed = ms
+            reward += 1
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -222,7 +221,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             self.run_step += 1
         observation = self.update_observation()
         if self.is_done:
-            self.close()
+            traci.close(False)
         return observation, reward, self.is_done, {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
 
     def reset(self):
@@ -242,8 +241,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
         self.run_step = 0
 
-        self.meanspeed = self._getmeanspeed()
-
         return self.update_observation()
     
     def seed(self, seed= None):
@@ -256,7 +253,3 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
     def render(self):
         pass
-    
-    def close(self):
-        #Meant for forced close ops.
-        traci.close(False)
