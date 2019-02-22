@@ -40,7 +40,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_dec_list = list()
         self.lanearea_max_speed = dict()
         self.action_set = dict()
-        self.meanspeed = 0.0
+        self.waiting_time = 0.0
         self.death_factor = 0.001
         self.ratio = 0.0
 
@@ -92,7 +92,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     def is_episode(self):
         if self.run_step == END_TIME:
             print('You survived! Simulation end at phase %d' % (self.run_step / 1800 + 1))
-            traci.close(False)
             return True
         if self.run_step % 1800 == 0:
             self.death_factor -= 0.0002
@@ -104,7 +103,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.ratio = jam_length / dec_length
         if self.death_factor < self.ratio:
             print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
-            traci.close(False)
             return True
         return False
 
@@ -175,24 +173,22 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         return state
     
     def _getmeanspeed(self):
-        ms = list()
+        wt = list()
         for lane in self.lane_list:
-            ms.append(traci.lane.getLastStepMeanSpeed(lane))
-        meanspeed = np.mean(ms)
-        return meanspeed
+            wt.append(traci.lane.getWaitingTime(lane))
+        self.waiting_time = np.sum(wt)
 
     def step_reward(self):
         #Using waiting_time to present reward.
         reward = 0.0
-        episode = self.is_episode()
-        if episode:
+        if self.is_episode():
             reward += -1
         else:
-            reward += 0.1
-        meanspeed = self._getmeanspeed()
-        if meanspeed - self.meanspeed >= 2.77:
-            reward += 1
-        return reward, episode
+            self._getmeanspeed()
+            if self.waiting_time == 0:
+                reward += 0.1
+            reward += 0.6
+        return reward
     
     def reset_vehicle_maxspeed(self):
         for lane in self.lane_list:
@@ -217,13 +213,13 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         else:
             num_steps = self.np_random.randint(self.frameskip[0], self.frameskip[1])
         for _ in range(num_steps):
-            reward += self.step_reward()[0]
-            episode = self.step_reward()[1]
+            reward += self.step_reward()
             traci.simulationStep()
             self.run_step += 1
         observation = self.update_observation()
-        #print(a, reward)
-        return observation, reward, episode, {"Mean speed": self.meanspeed, "Congestion ratio": self.ratio}
+        if self.is_episode():
+            self.close()
+        return observation, reward, self.is_episode(), {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
@@ -241,8 +237,6 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.warm_up_simulation()
 
         self.run_step = 0
-
-        self.meanspeed = self._getmeanspeed()
 
         return self.update_observation()
     

@@ -180,3 +180,24 @@ Feb.22, 2019:
         if meanspeed - self.meanspeed >= 2.77:
             reward += 1
         return reward, episode
+
+    But failed
+
+2. reward function changed:
+    def _getmeanspeed(self):
+        wt = list()
+        for lane in self.lane_list:
+            wt.append(traci.lane.getWaitingTime(lane))
+        self.waiting_time = np.sum(wt)
+
+    def step_reward(self):
+        #Using waiting_time to present reward.
+        reward = 0.0
+        if self.is_episode():
+            reward += -1
+        else:
+            self._getmeanspeed()
+            if self.waiting_time == 0:
+                reward += 0.1
+            reward += 0.6
+        return reward
