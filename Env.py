@@ -40,9 +40,10 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_dec_list = list()
         self.lanearea_max_speed = dict()
         self.action_set = dict()
-        self.waiting_time = 0.0
+        self.meanspeed = 0.0
         self.death_factor = 0.001
         self.ratio = 0.0
+        self.is_done = False
 
         # initialize sumo path
         
@@ -173,21 +174,24 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         return state
     
     def _getmeanspeed(self):
-        wt = list()
-        for lane in self.lane_list:
-            wt.append(traci.lane.getWaitingTime(lane))
-        self.waiting_time = np.sum(wt)
+        ms = list()
+        for lane in self.lanearea_dec_list:
+            ms.append(traci.lanearea.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        return meanspeed
 
     def step_reward(self):
         #Using waiting_time to present reward.
         reward = 0.0
-        if self.is_episode():
-            reward += -1
+        self.is_done = self.is_episode()
+        if self.is_done:
+            reward -= 1
         else:
-            self._getmeanspeed()
-            if self.waiting_time == 0:
+            ms = self._getmeanspeed()
+            if ms - self.meanspeed >= 0:
                 reward += 0.1
-            reward += 0.6
+            reward += 0.01
+            self.meanspeed = ms
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -217,9 +221,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             traci.simulationStep()
             self.run_step += 1
         observation = self.update_observation()
-        if self.is_episode():
+        if self.is_done:
             self.close()
-        return observation, reward, self.is_episode(), {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
+        return observation, reward, self.is_done, {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
@@ -237,6 +241,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.warm_up_simulation()
 
         self.run_step = 0
+
+        self.meanspeed = self._getmeanspeed()
 
         return self.update_observation()
     

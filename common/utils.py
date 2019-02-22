@@ -8,7 +8,7 @@ import torch.nn as nn
 Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
-        'stop_reward':      18.0,   # Maximum reward to stop training
+        'stop_reward':      18000.0,   # Maximum reward to stop training
         'stop_frame':       50000,  # Maximum timestep to stop training
         
         ### MEMORY HYPERPARAMETERS
