@@ -105,27 +105,28 @@ def Core():
     
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.is_available():
         c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
         gpu = int(c) if c is not '' else 0
+        device = torch.device('cuda:' + str(gpu) if torch.cuda.is_available() else 'cpu')
         if gpu is not None:
             torch.cuda.set_device(gpu)
             torch.set_default_tensor_type('torch.cuda.FloatTensor')
-            net.cuda()
+            net.cuda(device)
             torch.backends.cudnn.benchmark = True
-        print("Now using GPU CORE #{} for training".format(torch.cuda.current_device()))
+        print("Now using {} for training".format(torch.cuda.get_device_name(torch.cuda.current_device())))
 
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
     epsilon_tracker = tracker.EpsilonTracker(selector, params)
-    agents = agent.DQNAgent(net, selector, writer, device = device)
+    agents = agent.DQNAgent(net, selector, device = device)
 
     exp_source = experience.ExperienceSourceFirstLast(env, agents, gamma=params['gamma'], steps_count=1)
     #buffer = experience.ExperienceReplayBuffer(exp_source, params['replay_size']) # For Regular memory optimization
     buffer = experience.PrioReplayBuffer(exp_source, params['replay_size'],params['PRIO_REPLAY_ALPHA']) #For Prioritized memory optimization
 
     frame_idx = 0
+    graph = True
     beta = params['BETA_START']
 
     if path:
@@ -169,8 +170,8 @@ def Core():
             #Prioritized memory optimization
             optimizer.zero_grad()
             batch, batch_indices, batch_weights = buffer.sample(params['batch_size'], beta)
-            loss_v, sample_prios_v = utils.calc_loss(batch, batch_weights, net, tgt_net.target_model,
-                                               params['gamma'], device=device)
+            loss_v, sample_prios_v, graph = utils.calc_loss(batch, batch_weights, net, tgt_net.target_model,
+                                               params['gamma'], writer, graph, device=device)
             loss_v.backward()
             optimizer.step()
             buffer.update_priorities(batch_indices, sample_prios_v.data.cpu().numpy())

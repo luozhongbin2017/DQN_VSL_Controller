@@ -56,13 +56,11 @@ class DQNAgent(BaseAgent):
     DQNAgent is a memoryless DQN agent which calculates Q values
     from the observations and  converts them into the actions using action_selector
     """
-    def __init__(self, dqn_model, action_selector, writer, device="cpu", preprocessor=default_states_preprocessor):
+    def __init__(self, dqn_model, action_selector, device="cpu", preprocessor=default_states_preprocessor):
         self.dqn_model = dqn_model
         self.action_selector = action_selector
         self.preprocessor = preprocessor
         self.device = device
-        self.writer = writer
-        self.dr = True
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
@@ -74,14 +72,6 @@ class DQNAgent(BaseAgent):
         q_v = self.dqn_model(states)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
-        
-        #Add graph
-        if self.dr:
-            print("=> Drawing neural network graph...")
-            self.writer.add_graph(self.dqn_model, states)
-            print("=> Graph done!")
-            self.dr = False
-
         return actions, agent_states
 
 

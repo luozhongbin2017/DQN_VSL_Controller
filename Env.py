@@ -93,6 +93,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     def is_episode(self):
         if self.run_step == END_TIME:
             print('You survived! Simulation end at phase %d' % (self.run_step / 1800 + 1))
+            traci.close(False)
             return True
         if self.run_step % 1800 == 0:
             self.death_factor -= 0.0002
@@ -104,6 +105,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.ratio = jam_length / dec_length
         if self.death_factor < self.ratio:
             print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
+            traci.close(False)
             return True
         return False
 
@@ -183,12 +185,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
     def step_reward(self):
         #Using waiting_time to present reward.
         reward = 0.0
-        self.is_done = self.is_episode()
         self._getwaitingtime()
-        if self.is_done:
+        if self.waiting_time > 0:
             reward -= 1
-        elif self.waiting_time > 0:
-            reward -= 0.5
         else:
             reward += 1
         return reward
@@ -218,11 +217,15 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         for _ in range(num_steps):
             reward += self.step_reward()
             traci.simulationStep()
+            num_arrow = int(self.run_step * 50 / END_TIME)
+            num_line = 50 - num_arrow
+            percent = self.run_step * 100.0 / END_TIME
+            process_bar = 'Simulation Running... [' + '>' * num_arrow + '-' * num_line + ']' + '%.2f' % percent + '%' + '\r'
+            sys.stdout.write(process_bar)
+            sys.stdout.flush()
             self.run_step += 1
         observation = self.update_observation()
-        if self.is_done:
-            traci.close(False)
-        return observation, reward, self.is_done, {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
+        return observation, reward, self.is_episode(), {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
