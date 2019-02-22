@@ -62,8 +62,7 @@ class DQNAgent(BaseAgent):
         self.preprocessor = preprocessor
         self.device = device
         self.writer = writer
-        self.ag = True
-        
+        self.dr = True
 
     def __call__(self, states, agent_states=None):
         if agent_states is None:
@@ -72,12 +71,18 @@ class DQNAgent(BaseAgent):
             states = self.preprocessor(states)
             if torch.is_tensor(states):
                 states = states.to(self.device)
-        if self.ag == True:
-            self.writer.add_graph(self.dqn_model, states)
-            self.ag = False
         q_v = self.dqn_model(states)
         q = q_v.data.cpu().numpy()
         actions = self.action_selector(q)
+        
+        #Add graph
+        with self.writer:
+            if self.dr:
+                print("=> Drawing neural network graph...")
+                self.writer.add_graph(self.dqn_model, states)
+                print("=> Graph done!")
+                self.dr == False
+
         return actions, agent_states
 
 

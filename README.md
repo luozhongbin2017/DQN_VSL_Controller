@@ -163,3 +163,20 @@ def step_reward(self):
         return reward
 
 Finally, it's all done!
+
+Feb.22, 2019:
+1. reward function changed:
+    def step_reward(self):
+        reward = 0.0
+        episode = self.is_episode()
+        if episode:
+            reward += -1
+        else:
+            reward += 0.1
+        wt = list()
+        for lane in self.lane_list:
+            wt.append(traci.lanearea.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(wt)
+        if meanspeed - self.meanspeed >= 2.77:
+            reward += 1
+        return reward, episode

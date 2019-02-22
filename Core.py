@@ -33,11 +33,11 @@ class DuelingNetwork(nn.Module):
         super(DuelingNetwork, self).__init__()
 
         self.Convolutional_Layer = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, kernel_size= 8, stride= 4),
+            nn.Conv2d(input_shape[0], 32, kernel_size= 9, stride= 4),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size= 4, stride= 2),
+            nn.Conv2d(32, 64, kernel_size= 5, stride= 2),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size= 3, stride= 1),
+            nn.Conv2d(64, 256, kernel_size= 3, stride= 1),
             nn.ReLU()
         )
 
@@ -69,7 +69,7 @@ class DuelingNetwork(nn.Module):
 
 # Saving model
 def save_model(net, optim, path, frame):
-	state_dict = net.module.state_dict()
+	state_dict = net.state_dict()
 	for key in state_dict.keys():
 		state_dict[key] = state_dict[key].cpu()
 
@@ -78,6 +78,7 @@ def save_model(net, optim, path, frame):
 		'state_dict': state_dict,
 		'optimizer': optim},
 		path)
+
 # Load pretrained model
 def load_model(net, path):
 	state_dict = torch.load(path)
@@ -95,7 +96,7 @@ def load_model(net, path):
 # Training
 def Core():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
-    env = Env.SumoEnv(writer)  ###This IO needs to be modified
+    env = Env.SumoEnv()  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
     env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
@@ -142,12 +143,15 @@ def Core():
             buffer.populate(1)
             epsilon_tracker.frame(frame_idx)
             beta = min(1.0, params['BETA_START'] + frame_idx * (1.0 - params['BETA_START']) / params['BETA_FRAMES'])
+            writer.add_scalar("Train/Beta", beta, frame_idx)
 
-            new_rewards = exp_source.pop_total_rewards()
+            new_rewards, env_status = exp_source.pop_total_rewards()
             if new_rewards:
                 #writer.add_scalar("beta", beta, frame_idx)
                 for name, netparam in net.named_parameters():
-                    writer.add_histogram(name, netparam.clone().cpu().data.numpy(), frame_idx)
+                    writer.add_histogram('Model/' + name, netparam.clone().cpu().data.numpy(), frame_idx)
+                for key in env_status.keys():
+                    writer.add_scalar('Env/' + str(key), env_status[key], frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     env.close()
                     break
@@ -172,7 +176,7 @@ def Core():
             buffer.update_priorities(batch_indices, sample_prios_v.data.cpu().numpy())
 
             #Writer function -> Tensorboard file
-            writer.add_scalar("Loss", loss_v, frame_idx)
+            writer.add_scalar("Train/Loss", loss_v, frame_idx)
             
             #saving model
             if frame_idx % 1000== 0:

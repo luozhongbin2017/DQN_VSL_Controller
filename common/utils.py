@@ -4,26 +4,26 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-# Define Constants
+# Define Constants that could be modified
 Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
-        'stop_reward':      18.0,  # Modifiable
-        'stop_frame':       50000,  #Modifiable
+        'stop_reward':      18.0,   # Maximum reward to stop training
+        'stop_frame':       50000,  # Maximum timestep to stop training
         
         ### MEMORY HYPERPARAMETERS
-        'replay_size':      100000,
-        'replay_initial':   10000,
+        'replay_size':      100000, # number of previous transitions to remember
+        'replay_initial':   10000,  #Timesteps to observe before training
 
         # EXPLORATION HYPERPARAMETERS for epsilon greedy strategy
-        'epsilon_frames':   10**5,
+        'epsilon_frames':   10**5, # frames over which to anneal epsilon
         'epsilon_start':    1.0,   # exploration probability at start
         'epsilon_final':    0.02,  # minimum exploration probability
-        'learning_rate':    0.02, # exponential decay rate for exploration prob
+        'learning_rate':    0.02,  # exponential decay rate for exploration prob
 
         #Prio-learning factors
         'PRIO_REPLAY_ALPHA': 0.6,
-        'BETA_START': 0.4,
+        'BETA_START':  0.4,
         'BETA_FRAMES': 100000,
 
         # Q LEARNING hyperparameters
@@ -35,7 +35,7 @@ Constants = {
         'max_steps':        5000,  # Max possible steps in an episode
 
         # FIXED Q TARGETS HYPERPARAMETERS
-        'max_tau':          1000               #Tau is the C step where we sync our target network   
+        'max_tau':          1000   #Tau is the C step where we sync our target network   
         } 
            
 
