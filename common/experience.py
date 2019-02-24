@@ -92,7 +92,7 @@ class ExperienceSource:
                 if self.vectorized:
                     next_state_n, r_n, is_done_n, _ = env.step(action_n)
                 else:
-                    next_state, r, is_done, self.env_last_status = env.step(action_n[0])
+                    next_state, r, is_done, _ = env.step(action_n[0])
                     next_state_n, r_n, is_done_n = [next_state], [r], [is_done]
 
                 for ofs, (action, next_state, r, is_done) in enumerate(zip(action_n, next_state_n, r_n, is_done_n)):
@@ -125,11 +125,10 @@ class ExperienceSource:
 
     def pop_total_rewards(self):
         r = self.total_rewards
-        env_ls = self.env_last_status
         if r:
             self.total_rewards = []
             self.total_steps = []
-        return r, env_ls
+        return r
 
     def pop_rewards_steps(self):
         res = list(zip(self.total_rewards, self.total_steps))

@@ -96,11 +96,11 @@ def load_model(net, path):
 # Training
 def Core():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
-    env = Env.SumoEnv()  ###This IO needs to be modified
+    env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
-    #print(env.observation_space.shape)
+    env = wrapper.wrap_dqn(env, skipframes = 0, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
+    #print(env.action_space.n)
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
     
     path = os.path.join('./runs/', 'checkpoint.pth')
@@ -146,13 +146,11 @@ def Core():
             beta = min(1.0, params['BETA_START'] + frame_idx * (1.0 - params['BETA_START']) / params['BETA_FRAMES'])
             writer.add_scalar("Train/Beta", beta, frame_idx)
 
-            new_rewards, env_status = exp_source.pop_total_rewards()
+            new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
                 #writer.add_scalar("beta", beta, frame_idx)
                 for name, netparam in net.named_parameters():
                     writer.add_histogram('Model/' + name, netparam.clone().cpu().data.numpy(), frame_idx)
-                for key in env_status.keys():
-                    writer.add_scalar('Env/' + str(key), env_status[key], frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     env.close()
                     break

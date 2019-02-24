@@ -204,3 +204,32 @@ Feb.22, 2019:
             reward += 0.01
             self.meanspeed = ms
         return reward
+
+3. reward function changed:
+    def _getcongestionratio(self):
+        for lanearea_dec in self.lanearea_dec_list:
+            dec_length = 0.0
+            jam_length = 0.0
+            dec_length += traci.lanearea.getLength(lanearea_dec)
+            jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
+        ratio = jam_length / dec_length
+        return ratio
+    
+    def _getmeanspeed(self):
+        ms = list()
+        for lane in self.lane_list:
+            ms.append(traci.lane.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        return meanspeed
+    
+    def _transform(self, x):
+        return 1/(1 + np.exp(-x))
+
+    def step_reward(self):
+        #Using waiting_time to present reward.
+        reward = 0.5
+        speedfactor = self._getmeanspeed() - self.meanspeed
+        wtfactor = self._getwaitingtime() - self.waiting_time
+        ratiofactor = self._getcongestionratio() - self.ratio
+        reward += self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
+        return reward

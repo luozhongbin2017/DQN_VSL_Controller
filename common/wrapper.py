@@ -149,7 +149,7 @@ class ProcessFrame84(gym.ObservationWrapper):
 class ClippedRewardsWrapper(gym.RewardWrapper):
     def reward(self, reward):
         """We followed DeepMind suggestion to clip the reward between [-1,+1] to improve the stability."""
-        return np.clip(reward)
+        return np.sign(reward)
 
 #***
 class LazyFrames(object):
@@ -219,13 +219,13 @@ class ImageToPyTorch(gym.ObservationWrapper):
         return np.swapaxes(observation, 2, 0)
 
 
-def wrap_dqn(env, skipframes= 3, stack_frames= 4, episodic_life= True, reward_clipping= True):
+def wrap_dqn(env, skipframes= 4, stack_frames= 3, episodic_life= True, reward_clipping= True):
     """Apply a common set of wrappers for Atari games."""
     #assert 'NoFrameskip' in env.spec.id
     if episodic_life:
         env = EpisodicLifeEnv(env)
     #env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip= skipframes)
+    #env = MaxAndSkipEnv(env, skip= skipframes)
     #if 'FIRE' in env.unwrapped.get_action_meanings():
         #env = FireResetEnv(env)
     #env = ProcessFrame84(env)

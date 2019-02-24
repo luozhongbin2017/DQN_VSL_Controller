@@ -17,20 +17,21 @@ from sumolib import checkBinary
 #Environment Constants
 STATE_SHAPE = (81, 441, 1)      
 WARM_UP_TIME = 3 * 1e2
-END_TIME = 105 * 1e2
+END_TIME = 100 * 1e2
 VEHICLE_MEAN_LENGTH = 5
-speeds = [11.11, 13.89, 16.67, 19.44, 22.22]  # possible actions collection
+speeds = [11.11, 16.67, 22.22, 27.78, 33.33]  # possible actions collection
 
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, frameskip = (2, 5), demonstration = False):
+    def __init__(self, writer, frameskip= 4, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
         self.warmend = END_TIME
         self.demonstration = demonstration
         self.frameskip = frameskip
+        self.writer = writer
 
         self.run_step = 0
         self.lane_list = list()
@@ -41,9 +42,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_max_speed = dict()
         self.action_set = dict()
         self.waiting_time = 0.0
-        self.death_factor = 0.001
+        #self.death_factor = 0.0005
         self.ratio = 0.0
-        self.is_done = False
+        self.meanspeed = 22.22
 
         # initialize sumo path
         
@@ -73,10 +74,16 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
         # initalize action set
         i = 0
-        for lanearea in self.lanearea_dec_list:
-            for speed in speeds:
-                self.action_set[i] = [lanearea,speed]
-                i += 1
+        j = 0
+        lanearea = list()
+        while i < len(self.lanearea_dec_list):
+            lanearea.append(self.lanearea_dec_list[i])
+            if (i + 1) % 3 == 0:
+                for speed in speeds:
+                    self.action_set[j] = [lanearea.copy(), speed]
+                    j += 1
+                lanearea.clear()
+            i += 1
         self.action_space = spaces.Discrete(len(self.action_set))
 
         # initialize vehicle_list and vehicle_position
@@ -90,23 +97,21 @@ class SumoEnv(gym.Env):       ###It needs to be modified
                 self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 2)
             run_step += 1
     
+    def _get_status(self):
+        self.writer.add_scalar("Env/Waiting time", self.waiting_time)
+        self.writer.add_scalar("Env/Congestion ratio", self.ratio)
+
     def is_episode(self):
         if self.run_step == END_TIME:
-            print('You survived! Simulation end at phase %d' % (self.run_step / 1800 + 1))
+            #print('Scenario ends... ') #at phase %d' % (self.run_step / 1800 + 1))
             traci.close(False)
             return True
-        if self.run_step % 1800 == 0:
-            self.death_factor -= 0.0002
-        for lanearea_dec in self.lanearea_dec_list:
-            dec_length = 0
-            jam_length = 0
-            dec_length += traci.lanearea.getLength(lanearea_dec)
-            jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
-        self.ratio = jam_length / dec_length
+        '''if self.run_step % 1800 == 0:
+            self.death_factor -= 0.0001
         if self.death_factor < self.ratio:
-            print('You are jammed to Death! Game finished at phase %d' % (self.run_step / 1800 + 1))
+            print('You are jammed to Death! Scenario finished at phase %d' % (self.run_step / 1800 + 1))
             traci.close(False)
-            return True
+            return True'''
         return False
 
     def warm_up_simulation(self):
@@ -180,16 +185,35 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         for lane in self.lane_list:
             #print(traci.lane.getWaitingTime(lane))
             wt.append(traci.lane.getWaitingTime(lane))
-        self.waiting_time = np.sum(wt)
+        waiting_time = np.sum(wt)
+        return waiting_time
+    
+    def _getcongestionratio(self):
+        for lanearea_dec in self.lanearea_dec_list:
+            dec_length = 0.0
+            jam_length = 0.0
+            dec_length += traci.lanearea.getLength(lanearea_dec)
+            jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
+        ratio = jam_length / dec_length
+        return ratio
+    
+    def _getmeanspeed(self):
+        ms = list()
+        for lane in self.lane_list:
+            ms.append(traci.lane.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        return meanspeed
+    
+    def _transform(self, x):
+        return 1/(1 + np.exp(-x))
 
     def step_reward(self):
         #Using waiting_time to present reward.
-        reward = 0.0
-        self._getwaitingtime()
-        if self.waiting_time > 0:
-            reward -= 1
-        else:
-            reward += 1
+        reward = 0.5
+        speedfactor = self._getmeanspeed() - self.meanspeed
+        wtfactor = self._getwaitingtime() - self.waiting_time
+        ratiofactor = self._getcongestionratio() - self.ratio
+        reward += self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -208,7 +232,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         # Conduct action, update observation and collect reward.
         reward = 0.0
         action = self.action_set[a]
-        self.lanearea_max_speed[action[0]]=action[1]
+        for i in range(3):
+            self.lanearea_max_speed[action[0][i]]=action[1]
         self.reset_vehicle_maxspeed()
         if isinstance(self.frameskip, int):
             num_steps = self.frameskip
@@ -220,7 +245,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             num_arrow = int(self.run_step * 50 / END_TIME)
             num_line = 50 - num_arrow
             percent = self.run_step * 100.0 / END_TIME
-            process_bar = 'Simulation Running... [' + '>' * num_arrow + '-' * num_line + ']' + '%.2f' % percent + '%' + '\r'
+            process_bar = 'Scenario Running... [' + '>' * num_arrow + '-' * num_line + ']' + '%.2f' % percent + '%' + '\r'
             sys.stdout.write(process_bar)
             sys.stdout.flush()
             self.run_step += 1

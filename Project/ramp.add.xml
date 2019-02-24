@@ -34,14 +34,6 @@
 
     <inductionLoop id="ramp_eval_2_0" lane="ramp_0" pos="1070" freq="60" file=".\Output\ramp_eval.out"/>
 
-    <laneAreaDetector id="mainline_up_0_0" lane="mainline_up_0" pos="0" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-    <laneAreaDetector id="mainline_up_1_0" lane="mainline_up_1" pos="0" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-    <laneAreaDetector id="mainline_up_2_0" lane="mainline_up_2" pos="0" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-
-    <laneAreaDetector id="mainline_up_0_1" lane="mainline_up_0" pos="700" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-    <laneAreaDetector id="mainline_up_1_1" lane="mainline_up_1" pos="700" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-    <laneAreaDetector id="mainline_up_2_1" lane="mainline_up_2" pos="700" freq="60" length="700" file=".\Output\ramp_eval.out"/>
-
     <laneAreaDetector id="mainline_up_0_2" lane="mainline_up_0" pos="1400" freq="60" length="796" file=".\Output\ramp_eval.out"/>
     <laneAreaDetector id="mainline_up_1_2" lane="mainline_up_1" pos="1400" freq="60" length="796" file=".\Output\ramp_eval.out"/>
     <laneAreaDetector id="mainline_up_2_2" lane="mainline_up_2" pos="1400" freq="60" length="796" file=".\Output\ramp_eval.out"/>

@@ -12,14 +12,14 @@ Constants = {
         'stop_frame':       50000,  # Maximum timestep to stop training
         
         ### MEMORY HYPERPARAMETERS
-        'replay_size':      80000, # number of previous transitions to remember
-        'replay_initial':   2500,  #Timesteps to observe before training
+        'replay_size':      100000, # number of previous transitions to remember
+        'replay_initial':   10000,  #Timesteps to observe before training
 
         # EXPLORATION HYPERPARAMETERS for epsilon greedy strategy
         'epsilon_frames':   10**5, # frames over which to anneal epsilon
-        'epsilon_start':    0.1,   # exploration probability at start
-        'epsilon_final':    0.0001,  # minimum exploration probability
-        'learning_rate':    1e-4,  # exponential decay rate for exploration prob
+        'epsilon_start':    0.99,   # exploration probability at start
+        'epsilon_final':    0.02,  # minimum exploration probability
+        'learning_rate':    0.02,  # exponential decay rate for exploration prob
 
         #Prio-learning factors
         'PRIO_REPLAY_ALPHA': 0.6,
