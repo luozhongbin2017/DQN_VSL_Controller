@@ -94,7 +94,7 @@ def load_model(net, path):
 # Training
 def Core():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
-    env = Env.SumoEnv(writer)  ###This IO needs to be modified
+    env = Env.SumoEnv(writer, death_factor= 0.0004)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
     env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
@@ -157,13 +157,10 @@ def Core():
             buffer.populate(1)
             epsilon_tracker.frame(frame_idx)
             beta = min(1.0, params['BETA_START'] + frame_idx * (1.0 - params['BETA_START']) / params['BETA_FRAMES'])
-            writer.add_scalar("Train/Beta", beta, frame_idx)
 
             new_rewards = exp_source.pop_total_rewards()
             if new_rewards:
-                #writer.add_scalar("beta", beta, frame_idx)
-                for name, netparam in net.named_parameters():
-                    writer.add_histogram('Model/' + name, netparam.clone().cpu().data.numpy(), frame_idx)
+                writer.add_scalar("Interaction/Beta", beta, frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
                     env.close()
                     break
@@ -192,6 +189,8 @@ def Core():
 
             #Writer function -> Tensorboard file
             writer.add_scalar("Train/Loss", loss_v, frame_idx)
+            for name, netparam in net.named_parameters():
+                    writer.add_histogram('Model/' + name, netparam.clone().cpu().data.numpy(), frame_idx)
             
             #saving model
             if frame_idx % 1000== 0:

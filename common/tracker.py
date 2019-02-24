@@ -31,10 +31,10 @@ class RewardTracker:
         ))
         sys.stdout.flush()
         if epsilon is not None:
-            self.writer.add_scalar("Train/epsilon", epsilon, frame)
-        self.writer.add_scalar("Train/speed", speed, frame)
-        self.writer.add_scalar("Train/reward_100", mean_reward, frame)
-        self.writer.add_scalar("Train/reward", reward, frame)
+            self.writer.add_scalar("Interaction/epsilon", epsilon, frame)
+        self.writer.add_scalar("Interaction/speed", speed, frame)
+        self.writer.add_scalar("Interaction/reward_100", mean_reward, frame)
+        self.writer.add_scalar("Interaction/reward", reward, frame)
         if mean_reward > self.stop_reward or  frame > self.stop_frame:
             print("Training finished in %d steps!" % frame)
             return True

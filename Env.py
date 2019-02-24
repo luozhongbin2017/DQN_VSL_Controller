@@ -24,7 +24,7 @@ speeds = [11.11, 16.67, 22.22, 27.78, 33.33]  # possible actions collection
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, writer, frameskip= 4, demonstration = False):
+    def __init__(self, writer, frameskip= 4, death_factor= 0.001, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
@@ -42,7 +42,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.lanearea_max_speed = dict()
         self.action_set = dict()
         self.waiting_time = 0.0
-        #self.death_factor = 0.0005
+        self.death_factor = death_factor
         self.ratio = 0.0
         self.meanspeed = 22.22
 
@@ -95,23 +95,19 @@ class SumoEnv(gym.Env):       ###It needs to be modified
                 self.vehicle_list[run_step][lane.attrib["id"]]=list()
                 
                 self.vehicle_position[run_step][lane.attrib["id"]]=[0]*int(float(lane.attrib["length"])/VEHICLE_MEAN_LENGTH + 2)
-            run_step += 1
-    
-    def _get_status(self):
-        self.writer.add_scalar("Env/Waiting time", self.waiting_time)
-        self.writer.add_scalar("Env/Congestion ratio", self.ratio)
+            run_step += 1       
 
     def is_episode(self):
         if self.run_step == END_TIME:
-            #print('Scenario ends... ') #at phase %d' % (self.run_step / 1800 + 1))
+            print('Scenario ends... at phase %d' % (self.run_step / 1800 + 1))
             traci.close(False)
             return True
-        '''if self.run_step % 1800 == 0:
-            self.death_factor -= 0.0001
+        if self.run_step % 1800 == 0:
+            self.death_factor -= self.death_factor / 5
         if self.death_factor < self.ratio:
-            print('You are jammed to Death! Scenario finished at phase %d' % (self.run_step / 1800 + 1))
+            print('You are jammed to Death! Scenario ends at phase %d' % (self.run_step / 1800 + 1))
             traci.close(False)
-            return True'''
+            return True
         return False
 
     def warm_up_simulation(self):
@@ -209,11 +205,17 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
     def step_reward(self):
         #Using waiting_time to present reward.
-        reward = 0.5
         speedfactor = self._getmeanspeed() - self.meanspeed
         wtfactor = self._getwaitingtime() - self.waiting_time
         ratiofactor = self._getcongestionratio() - self.ratio
-        reward += self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
+        reward = self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
+        self.waiting_time = self._getwaitingtime()
+        self.ratio = self._getcongestionratio()
+        self.meanspeed = self._getmeanspeed()
+        if self.death_factor < self.ratio:
+            reward -= 1
+        else:
+            reward += 0.5
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -250,7 +252,9 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             sys.stdout.flush()
             self.run_step += 1
         observation = self.update_observation()
-        return observation, reward, self.is_episode(), {"Waiting time": self.waiting_time, "Congestion ratio": self.ratio}
+        self.writer.add_scalar("Env/Waiting time", self.waiting_time)
+        self.writer.add_scalar("Env/Congestion ratio", self.ratio)
+        return observation, reward, self.is_episode(), {'No info'}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.
