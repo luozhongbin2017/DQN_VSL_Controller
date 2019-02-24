@@ -17,7 +17,7 @@ Constants = {
 
         # EXPLORATION HYPERPARAMETERS for epsilon greedy strategy
         'epsilon_frames':   10**5, # frames over which to anneal epsilon
-        'epsilon_start':    0.99,   # exploration probability at start
+        'epsilon_start':    1.0,   # exploration probability at start
         'epsilon_final':    0.02,  # minimum exploration probability
         'learning_rate':    0.02,  # exponential decay rate for exploration prob
 
@@ -30,9 +30,7 @@ Constants = {
         'gamma':            0.99,  # Discounting rate
 
         ### TRAINING HYPERPARAMETERS 
-        'batch_size':       64,
-        'total_episodes':   10000, # Total episodes for training
-        'max_steps':        5000,  # Max possible steps in an episode
+        'batch_size':       256,
 
         # FIXED Q TARGETS HYPERPARAMETERS
         'max_tau':          1000   #Tau is the C step where we sync our target network   
@@ -80,7 +78,7 @@ def calc_loss_dqn(batch, net, tgt_net, gamma, device="cpu"):
     expected_state_action_values = next_state_values.detach() * gamma + rewards_v
     return nn.MSELoss()(state_action_values, expected_state_action_values)
 
-def calc_loss(batch, batch_weights, net, tgt_net, gamma, writer, dr, device="cpu"):
+def calc_loss(batch, batch_weights, net, tgt_net, gamma, device="cpu"):
     states, actions, rewards, dones, next_states = unpack_batch(batch)
     states_v = torch.tensor(states).to(device)
     next_states_v = torch.tensor(next_states).to(device)
@@ -89,19 +87,13 @@ def calc_loss(batch, batch_weights, net, tgt_net, gamma, writer, dr, device="cpu
     done_mask = torch.ByteTensor(dones).to(device)
     batch_weights_v = torch.tensor(batch_weights).to(device)
 
-    #Add graph
-    if dr:
-        print("=> Drawing neural network graph...")
-        writer.add_graph(net, states)
-        print("=> Graph done!")
-        dr = False
     state_action_values = net(states_v).gather(1, actions_v.unsqueeze(-1)).squeeze(-1)
     next_state_values = tgt_net(next_states_v).max(1)[0]
     next_state_values[done_mask] = 0.0
 
     expected_state_action_values = next_state_values.detach() * gamma + rewards_v
     losses_v = batch_weights_v * (state_action_values - expected_state_action_values) ** 2
-    return losses_v.mean(), losses_v + 1e-5, dr
+    return losses_v.mean(), losses_v + 1e-5
 
 def distr_projection(next_distr, rewards, dones, Vmin, Vmax, n_atoms, gamma):
     """

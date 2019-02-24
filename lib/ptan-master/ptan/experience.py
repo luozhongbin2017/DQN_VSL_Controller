@@ -2,7 +2,6 @@ import gym
 import torch
 import random
 import collections
-import utils
 from torch.autograd import Variable
 
 import numpy as np
@@ -10,6 +9,7 @@ import numpy as np
 from collections import namedtuple, deque
 
 from .agent import BaseAgent
+from .common import utils
 
 # one single experience step
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done'])
@@ -231,6 +231,7 @@ class ExperienceSourceRollouts:
     def __iter__(self):
         pool_size = len(self.pool)
         states = [np.array(e.reset()) for e in self.pool]
+        dr = False
         mb_states = np.zeros((pool_size, self.steps_count) + states[0].shape, dtype=states[0].dtype)
         mb_rewards = np.zeros((pool_size, self.steps_count), dtype=np.float32)
         mb_values = np.zeros((pool_size, self.steps_count), dtype=np.float32)
@@ -574,46 +575,3 @@ class QLearningPreprocessor(BatchPreprocessor):
             q0[idx][act] = total_reward
 
         return state_0, q0, td
-
-
-class PrioReplayBuffer:
-    def __init__(self, exp_source, buf_size, prob_alpha=0.6):
-        self.exp_source_iter = iter(exp_source)
-        self.prob_alpha = prob_alpha
-        self.capacity = buf_size
-        self.pos = 0
-        self.buffer = []
-        self.priorities = np.zeros((buf_size, ), dtype=np.float32)
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def populate(self, count):
-        max_prio = self.priorities.max() if self.buffer else 1.0
-        for _ in range(count):
-            sample = next(self.exp_source_iter)
-            if len(self.buffer) < self.capacity:
-                self.buffer.append(sample)
-            else:
-                self.buffer[self.pos] = sample
-            self.priorities[self.pos] = max_prio
-            self.pos = (self.pos + 1) % self.capacity
-
-    def sample(self, batch_size, beta=0.4):
-        if len(self.buffer) == self.capacity:
-            prios = self.priorities
-        else:
-            prios = self.priorities[:self.pos]
-        probs = prios ** self.prob_alpha
-
-        probs /= probs.sum()
-        indices = np.random.choice(len(self.buffer), batch_size, p=probs)
-        samples = [self.buffer[idx] for idx in indices]
-        total = len(self.buffer)
-        weights = (total * probs[indices]) ** (-beta)
-        weights /= weights.max()
-        return samples, indices, np.array(weights, dtype=np.float32)
-
-    def update_priorities(self, batch_indices, batch_priorities):
-        for idx, prio in zip(batch_indices, batch_priorities):
-            self.priorities[idx] = prio

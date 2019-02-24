@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 import gym
 from gym import spaces
-#import cv2
+import cv2
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -15,7 +15,7 @@ class NoopResetEnv(gym.Wrapper):
         super(NoopResetEnv, self).__init__(env)
         self.noop_max = noop_max
         self.override_num_noops = None
-        #assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+        assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
 
     def step(self, action):
         return self.env.step(action)
@@ -137,20 +137,25 @@ class ProcessFrame84(gym.ObservationWrapper):
 
     @staticmethod
     def process(frame):
-        img = np.reshape(frame, [3, 27, 441]).astype(np.float32)
+        if frame.size == 210 * 160 * 3:
+            img = np.reshape(frame, [210, 160, 3]).astype(np.float32)
+        elif frame.size == 250 * 160 * 3:
+            img = np.reshape(frame, [250, 160, 3]).astype(np.float32)
+        else:
+            assert False, "Unknown resolution."
         img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114
         resized_screen = cv2.resize(img, (84, 110), interpolation=cv2.INTER_AREA)
         x_t = resized_screen[18:102, :]
         x_t = np.reshape(x_t, [84, 84, 1])
-        return x_t.astype(np.float32)
+        return x_t.astype(np.uint8)
 
 
 class ClippedRewardsWrapper(gym.RewardWrapper):
     def reward(self, reward):
-        """We followed DeepMind suggestion to clip the reward between [-1,+1] to improve the stability."""
+        """Change all the positive rewards to 1, negative to -1 and keep zero."""
         return np.sign(reward)
 
-#***
+
 class LazyFrames(object):
     def __init__(self, frames):
         """This object ensures that common frames between the observations are only stored once.
@@ -166,7 +171,7 @@ class LazyFrames(object):
             out = out.astype(dtype)
         return out
 
-#***
+
 class FrameStack(gym.Wrapper):
     def __init__(self, env, k):
         """Stack k last frames.
@@ -179,7 +184,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=100, shape=(shp[0]*k, shp[1], shp[2]), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]), dtype=np.float32)
 
     def reset(self):
         ob = self.env.reset()
@@ -218,16 +223,16 @@ class ImageToPyTorch(gym.ObservationWrapper):
         return np.swapaxes(observation, 2, 0)
 
 
-def wrap_dqn(env, skipframes= 4, stack_frames= 3, episodic_life= True, reward_clipping= True):
+def wrap_dqn(env, stack_frames=4, episodic_life=True, reward_clipping=True):
     """Apply a common set of wrappers for Atari games."""
-    #assert 'NoFrameskip' in env.spec.id
+    assert 'NoFrameskip' in env.spec.id
     if episodic_life:
         env = EpisodicLifeEnv(env)
-    #env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip= skipframes)
-    #if 'FIRE' in env.unwrapped.get_action_meanings():
-        #env = FireResetEnv(env)
-    #env = ProcessFrame84(env)
+    env = NoopResetEnv(env, noop_max=30)
+    env = MaxAndSkipEnv(env, skip=4)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = ProcessFrame84(env)
     env = ImageToPyTorch(env)
     env = FrameStack(env, stack_frames)
     if reward_clipping:

@@ -13,3 +13,4 @@ Project/Output/ramp_eval.out
 *.json
 Project/Output/mainline_eval.out
 Project/Output/ramp_eval.out
+*.out

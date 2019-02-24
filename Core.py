@@ -32,23 +32,22 @@ class DuelingNetwork(nn.Module):
     def __init__(self, input_shape, n_actions):
         super(DuelingNetwork, self).__init__()
 
-        self.Convolutional_Layer = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, kernel_size= 9, stride= 4),
+        self.convolutional_Layer = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=9, stride=4),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size= 5, stride= 2),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 256, kernel_size= 3, stride= 1),
+            nn.Conv2d(64, 256, kernel_size=3, stride=1),
             nn.ReLU()
         )
 
-        #print('input_shape[0]: ', input_shape[0])
         conv_out_size = self._get_conv_out(input_shape)
-        self.Fully_Connected_adv = nn.Sequential(
+        self.fully_connected_adv = nn.Sequential(
             nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, n_actions)
         )
-        self.Fully_Connected_val = nn.Sequential(
+        self.fully_connected_val = nn.Sequential(
             nn.Linear(conv_out_size, 512),
             nn.ReLU(),
             nn.Linear(512, 1)
@@ -56,15 +55,14 @@ class DuelingNetwork(nn.Module):
 
     def _get_conv_out(self, shape):
         #print('1, *shape: ', torch.zeros(1, *shape).size())
-        o = self.Convolutional_Layer(torch.zeros(1, *shape))
+        o = self.convolutional_Layer(torch.zeros(1, *shape))
         return int(np.prod(o.size()))
 
     def forward(self, x):
-        fx = x.float()
-        #print(x.size())
-        conv_out = self.Convolutional_Layer(fx).view(fx.size()[0], -1)
-        val = self.Fully_Connected_val(conv_out)
-        adv = self.Fully_Connected_adv(conv_out)
+        fx = x.float()/100
+        conv_out = self.convolutional_Layer(fx).view(fx.size()[0], -1)
+        val = self.fully_connected_val(conv_out)
+        adv = self.fully_connected_adv(conv_out)
         return val + adv - adv.mean()
 
 # Saving model
@@ -99,10 +97,10 @@ def Core():
     env = Env.SumoEnv(writer)  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, skipframes = 0, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
     #print(env.action_space.n)
     net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
-    
+
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
     if torch.cuda.is_available():
@@ -126,9 +124,10 @@ def Core():
     buffer = experience.PrioReplayBuffer(exp_source, params['replay_size'],params['PRIO_REPLAY_ALPHA']) #For Prioritized memory optimization
 
     frame_idx = 0
-    graph = True
+    flag = True
     beta = params['BETA_START']
 
+    #Load previous network
     if path:
         if os.path.isfile(path):
             print("=> Loading checkpoint '{}'".format(path))
@@ -137,6 +136,20 @@ def Core():
         else:
             optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
             print("=> No such checkpoint at '{}'".format(path))
+    
+    #Add graph at the first roll
+    print("=> Loading Environment for neural network demonstration...")
+    envg = Env.SumoEnv(writer)
+    envg = wrapper.wrap_dqn(envg, stack_frames = 3, episodic_life= False, reward_clipping= False) 
+    print("=> Drawing neural network graph...")
+    states = list()
+    states.append(envg.reset())
+    states = agent.default_states_preprocessor(states)
+    if torch.is_tensor(states):
+        states = states.to(device)
+    writer.add_graph(net, states)
+    print("=> Graph done!")
+    envg.close()
 
     with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
@@ -166,10 +179,13 @@ def Core():
             optimizer.step()'''
 
             #Prioritized memory optimization
+            if flag:
+                print('Training now...')
+                flag = False
             optimizer.zero_grad()
             batch, batch_indices, batch_weights = buffer.sample(params['batch_size'], beta)
-            loss_v, sample_prios_v, graph = utils.calc_loss(batch, batch_weights, net, tgt_net.target_model,
-                                               params['gamma'], writer, graph, device=device)
+            loss_v, sample_prios_v= utils.calc_loss(batch, batch_weights, net, tgt_net.target_model,
+                                               params['gamma'], device=device)
             loss_v.backward()
             optimizer.step()
             buffer.update_priorities(batch_indices, sample_prios_v.data.cpu().numpy())
