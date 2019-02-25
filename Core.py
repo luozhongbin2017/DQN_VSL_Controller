@@ -66,7 +66,7 @@ class DuelingNetwork(nn.Module):
         return val + adv - adv.mean()
 
 # Saving model
-def save_model(net, optim, path, frame):
+def save_model(net, buffer, loss, optim, path, frame):
 	state_dict = net.state_dict()
 	for key in state_dict.keys():
 		state_dict[key] = state_dict[key].cpu()
@@ -74,6 +74,8 @@ def save_model(net, optim, path, frame):
 	torch.save({
 		'frame': frame,
 		'state_dict': state_dict,
+        'buffer': buffer,
+        'loss': loss,
 		'optimizer': optim},
 		path)
 
@@ -87,9 +89,11 @@ def load_model(net, path):
 	net.load_state_dict(new_state_dict)
 	frame = state_dict['frame']
 	print("Having pre-trained %d frames." % frame)
+	buffer = state_dict['buffer']
+	loss = state_dict['loss']
 	optimizer = state_dict['optimizer']
 	net.train()
-	return net, frame, optimizer
+	return net, frame, buffer, loss, optimizer
 
 # Training
 def Core():   
@@ -104,15 +108,20 @@ def Core():
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
     if torch.cuda.is_available():
-        c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
-        gpu = int(c) if c is not '' else 0
-        device = torch.device('cuda:' + str(gpu) if torch.cuda.is_available() else 'cpu')
-        if gpu is not None:
-            torch.cuda.set_device(gpu)
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-            net.cuda(device)
-            torch.backends.cudnn.benchmark = True
-        print("Now using {} for training".format(torch.cuda.get_device_name(torch.cuda.current_device())))
+        d = bool(input("Please choose device to run the programe (0 - cpu  1 - gpu) :\n"))
+        if d:
+            c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
+            gpu = int(c) if c is not '' else 0
+            device = torch.device('cuda:' + str(gpu))
+            if gpu is not None:
+                torch.cuda.set_device(gpu)
+                torch.set_default_tensor_type('torch.cuda.FloatTensor')
+                net.cuda(device)
+                torch.backends.cudnn.benchmark = True
+            print("Now using {} for training".format(torch.cuda.get_device_name(torch.cuda.current_device())))
+        else:
+            device = torch.device('cpu')
+            print("Now using CPU for training")
 
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
@@ -131,7 +140,7 @@ def Core():
     if path:
         if os.path.isfile(path):
             print("=> Loading checkpoint '{}'".format(path))
-            net, frame_idx, optimizer = load_model(net, path)
+            net, frame_idx, buffer, loss, optimizer = load_model(net, path)
             print("Checkpoint loaded successfully! ")
         else:
             optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
@@ -194,7 +203,7 @@ def Core():
             
             #saving model
             if frame_idx % 1000== 0:
-                save_model(net, optimizer, path, frame_idx)
+                save_model(net, buffer, loss_v, optimizer, path, frame_idx)
                 print("Network saved at %s" % path)
             
             if frame_idx % params['max_tau'] == 0:

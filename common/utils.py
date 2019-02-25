@@ -30,7 +30,7 @@ Constants = {
         'gamma':            0.99,  # Discounting rate
 
         ### TRAINING HYPERPARAMETERS 
-        'batch_size':       256,
+        'batch_size':       64,
 
         # FIXED Q TARGETS HYPERPARAMETERS
         'max_tau':          1000   #Tau is the C step where we sync our target network   

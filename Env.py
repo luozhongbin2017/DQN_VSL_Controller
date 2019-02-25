@@ -214,9 +214,11 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.meanspeed = self._getmeanspeed()
         if self.death_factor < self.ratio:
             reward -= 1
+        elif self.run_step == END_TIME:
+            reward += 1
         else:
-            reward += 0.5
-        return reward
+            reward += 0.005
+        return reward / 12
     
     def reset_vehicle_maxspeed(self):
         for lane in self.lane_list:
@@ -252,8 +254,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             sys.stdout.flush()
             self.run_step += 1
         observation = self.update_observation()
-        self.writer.add_scalar("Env/Waiting time", self.waiting_time)
-        self.writer.add_scalar("Env/Congestion ratio", self.ratio)
+        self.writer.add_scalar("Current_Env/Waiting time", self.waiting_time, self.run_step)
+        self.writer.add_scalar("Current_Env/Congestion ratio", self.ratio, self.run_step)
         return observation, reward, self.is_episode(), {'No info'}
 
     def reset(self):
