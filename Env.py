@@ -19,7 +19,7 @@ STATE_SHAPE = (81, 441, 1)
 WARM_UP_TIME = 3 * 1e2
 END_TIME = 100 * 1e2
 VEHICLE_MEAN_LENGTH = 5
-speeds = [11.11, 16.67, 22.22, 27.78, 33.33]  # possible actions collection
+speeds = [11.11, 13.89, 16.67, 19.44, 22.22]  # possible actions collection
 
 
 
@@ -40,10 +40,14 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         self.vehicle_position = list()
         self.lanearea_dec_list = list()
         self.lanearea_max_speed = dict()
+        self.lanearea_ob = list()
+        self.lane_length = list()
         self.action_set = dict()
-        self.waiting_time = 0.0
+        #self.waiting_time = 0.0
+        self.delaytime = 0.0
+        self.saturation = 0.0
         self.death_factor = death_factor
-        self.ratio = 0.0
+        #self.ratio = 0.0
         self.meanspeed = 22.22
 
         # initialize sumo path
@@ -61,14 +65,18 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         net_tree = ET.parse("./project/ramp.net.xml")
         for lane in net_tree.iter("lane"):
             self.lane_list.append(lane.attrib["id"])
+            self.lane_length.append(float(lane.attrib["length"]))
         #self.state_shape = (3, len(self.lane_list), 441)
         self.observation_space = spaces.Box(low= -1, high=100, shape=(3 * len(self.lane_list), 441, 1), dtype=np.float32)
 
         # initialize lanearea_dec_list
         dec_tree = ET.parse("./project/ramp.add.xml")
         for lanearea_dec in dec_tree.iter("laneAreaDetector"):
-            self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
-            self.lanearea_max_speed[lanearea_dec.attrib["id"]] = 22.22
+            if lanearea_dec.attrib["freq"] == '60':
+                self.lanearea_dec_list.append(lanearea_dec.attrib["id"])
+                self.lanearea_max_speed[lanearea_dec.attrib["id"]] = 22.22
+            else:
+                self.lanearea_ob.append(lanearea_dec.attrib["id"])
  
          
 
@@ -104,7 +112,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             return True
         if self.run_step % 1800 == 0:
             self.death_factor -= self.death_factor / 5
-        if self.death_factor < self.ratio:
+        if self.death_factor < self.saturation:
             print('You are jammed to Death! Scenario ends at phase %d' % (self.run_step / 1800 + 1))
             traci.close(False)
             return True
@@ -176,39 +184,36 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         #print(state.shape)
         return state
     
-    def _getwaitingtime(self):
-        wt = list()
-        for lane in self.lane_list:
-            #print(traci.lane.getWaitingTime(lane))
-            wt.append(traci.lane.getWaitingTime(lane))
-        waiting_time = np.sum(wt)
-        return waiting_time
-    
-    def _getcongestionratio(self):
-        for lanearea in self.lanearea_dec_list:
-            dec_length = 0.0
-            jam_length = 0.0
-            dec_length += traci.lanearea.getLength(lanearea)
-            jam_length += traci.lanearea.getJamLengthMeters(lanearea)
-        ratio = jam_length / dec_length
-        return ratio
-    
-    def _getmeanspeed(self):
+    def _delaytime(self):
         ms = list()
         for lane in self.lane_list:
             ms.append(traci.lane.getLastStepMeanSpeed(lane))
         meanspeed = np.mean(ms)
-        return meanspeed
+        targetspeed = 22.22
+        delaytime = np.sum(self.lane_length) * (1 / meanspeed - 1/targetspeed)
+        return delaytime
+    
+    def _getsaturation(self):
+        saturation = list()
+        for lane in self.lane_list:
+            saturation.append(traci.lane.getLastStepVehicleNumber(lane)/(traci.lane.getLength(lane) / 5))
+        ans = np.mean(saturation)
+        print("saturation:" + str(ans))
+        self.saturation = ans
 
+    def _transformedtanh(self, x):
+        return (np.exp(-x/4) - np.exp(x/4))/(np.exp(x/4) + np.exp(-x/4))
+    
     def step_reward(self):
         #Using waiting_time to present reward.
-        speedfactor = self._getmeanspeed() - self.meanspeed
-        wtfactor = self._getwaitingtime() - self.waiting_time
-        ratiofactor = self._getcongestionratio() - self.ratio
-        if self.death_factor < self.ratio:
-            reward = -10
-        if speedfactor > 0 or wtfactor < 0 or ratiofactor < 0:
-            reward = 1
+        delta_delay = self._delaytime() - self.delaytime
+        delay_reward = self._transformedtanh(delta_delay)
+        satur_discount = 1 + np.sign(delta_delay) * (self.death_factor - self.saturation) ** 2
+        self.delaytime = self._delaytime()
+        if self.saturation > 0.6:
+            reward = -1.0
+        else:
+            reward = delay_reward * satur_discount
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -225,7 +230,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
     def step(self, a):
         # Conduct action, update observation and collect reward.
-        reward = 0.0
+        reward = list()
         action = self.action_set[a]
         for i in range(3):
             self.lanearea_max_speed[action[0][i]]=action[1]
@@ -235,7 +240,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         else:
             num_steps = self.np_random.randint(self.frameskip[0], self.frameskip[1])
         for _ in range(num_steps):
-            reward += self.step_reward()
+            reward.append(self.step_reward())
             traci.simulationStep()
             num_arrow = int(self.run_step * 50 / END_TIME)
             num_line = 50 - num_arrow
@@ -245,9 +250,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             sys.stdout.flush()
             self.run_step += 1
         observation = self.update_observation()
-        self.writer.add_scalar("Current_Env/Waiting time", self.waiting_time, self.run_step)
-        self.writer.add_scalar("Current_Env/Congestion ratio", self.ratio, self.run_step)
-        return observation, reward, self.is_episode(), {'No info'}
+        #print("reward:" + str(np.mean(np.clip(reward, -1, 1))))
+        return observation, np.mean(np.clip(reward, -1, 1)), self.is_episode(), {'No info'}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.

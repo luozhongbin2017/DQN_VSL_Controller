@@ -117,7 +117,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
         max_frame = np.max(np.stack(self._obs_buffer), axis=0)
 
-        return max_frame, total_reward, done, info
+        return max_frame, total_reward / self._skip, done, info
 
     def reset(self):
         """Clear past frame buffer and init. to first obs. from inner env."""

@@ -233,3 +233,63 @@ Feb.22, 2019:
         ratiofactor = self._getcongestionratio() - self.ratio
         reward += self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
         return reward
+4. reward
+    def _getwaitingtime(self):
+        wt = list()
+        for lane in self.lane_list:
+            #print(traci.lane.getWaitingTime(lane))
+            wt.append(traci.lane.getWaitingTime(lane))
+        waiting_time = np.sum(wt)
+        return waiting_time
+    
+    def _getcongestionratio(self):
+        for lanearea in self.lanearea_ob:
+            dec_length = 0.0
+            jam_length = 0.0
+            dec_length += traci.lanearea.getLength(lanearea)
+            jam_length += traci.lanearea.getJamLengthMeters(lanearea)
+        ratio = jam_length / dec_length
+        return ratio
+    
+    def _getmeanspeed(self):
+        ms = list()
+        for lane in self.lane_list:
+            ms.append(traci.lane.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        return meanspeed
+
+    def step_reward(self):
+        #Using waiting_time to present reward.
+        reward = 0.0
+        wtfactor = (self._getwaitingtime() - self.waiting_time)/self.waiting_time
+        ratiofactor = (self._getcongestionratio() - self.ratio)/self.ratio
+        reward += 1 - 2 * (wtfactor + ratiofactor)
+        return reward
+
+5. reward
+    def _delaytime(self):
+        ms = list()
+        for lane in self.lane_list:
+            ms.append(traci.lane.getLastStepMeanSpeed(lane))
+        meanspeed = np.mean(ms)
+        targetspeed = 22.22
+        delaytime = np.sum(self.lane_length) * (1 / meanspeed - 1/targetspeed)
+        return delaytime
+    
+    def _getsaturation(self):
+        saturation = list()
+        for lane in self.lane_list:
+            saturation.append(traci.lane.getLastStepVehicleNumber(lane)/(traci.lane.getLength(lane) / 5))
+        ans = np.mean(saturation)
+        print("saturation:" + str(ans))
+        return ans
+
+    def _transformedtanh(self, x):
+        return (np.exp(x/2) - np.exp(x/2))/(np.exp(x/2) + np.exp(x/2))
+    
+    def step_reward(self):
+        #Using waiting_time to present reward.
+        reward = 0.0
+        reward += -(self._delaytime() - self.delaytime)
+        self.delaytime = self._delaytime()
+        return reward

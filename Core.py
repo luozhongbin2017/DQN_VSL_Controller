@@ -23,7 +23,6 @@ from common import action, agent, utils, experience, tracker, wrapper
 # Global Variable:
 #parser.add_argument("--resume", default = None, type = str, metavar= path, help= 'path to latest checkpoint')
 params = utils.Constants
-np.seterr(divide='ignore',invalid='ignore')
 
 # Build Up Neural Network
 '''class DuelingNetwork(nn.Module):
@@ -122,14 +121,14 @@ def Core():
     env = Env.SumoEnv(writer, death_factor= params['death_factor'])  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper could be modified
+    env = wrapper.wrap_dqn(env, skipframes= 1, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
     #print(env.action_space.n)
     net = DQN(env.observation_space.shape, env.action_space.n)
 
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
     if torch.cuda.is_available():
-        d = int(input("Please choose device to run the programe (0 - cpu  1 - gpu) : "))
+        d = int(input("Please choose device to run the programe (0 - cpu  1 - gpu): "))
         if d != 0:
             c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
             gpu = int(c) if c is not '' else 0
@@ -168,7 +167,7 @@ def Core():
             print("=> No such checkpoint at '{}'".format(path))
     
     #Add graph at the first roll
-    while frame_idx:
+    if frame_idx == 0:
         print("=> Loading Environment for neural network demonstration...")
         envg = Env.SumoEnv(writer)
         envg = wrapper.wrap_dqn(envg, stack_frames = 3, episodic_life= False, reward_clipping= True) 
