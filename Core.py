@@ -23,9 +23,10 @@ from common import action, agent, utils, experience, tracker, wrapper
 # Global Variable:
 #parser.add_argument("--resume", default = None, type = str, metavar= path, help= 'path to latest checkpoint')
 params = utils.Constants
+np.seterr(divide='ignore',invalid='ignore')
 
 # Build Up Neural Network
-class DuelingNetwork(nn.Module):
+'''class DuelingNetwork(nn.Module):
     """
     Create a neural network to convert image data
     """
@@ -63,56 +64,85 @@ class DuelingNetwork(nn.Module):
         conv_out = self.convolutional_Layer(fx).view(fx.size()[0], -1)
         val = self.fully_connected_val(conv_out)
         adv = self.fully_connected_adv(conv_out)
-        return val + adv - adv.mean()
+        return val + adv - adv.mean()'''
+
+class DQN(nn.Module):
+    """Basic neural network framework"""
+    def __init__(self, input_shape, n_actions):
+        super(DQN, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=9, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=5, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 256, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_actions)
+        )
+
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        fx = x.float()
+        conv_out = self.conv(fx).view(fx.size()[0], -1)
+        return self.fc(conv_out)
 
 # Saving model
-def save_model(net, optim, path, frame):
-	state_dict = net.state_dict()
-	for key in state_dict.keys():
-		state_dict[key] = state_dict[key].cpu()
-
+def save_model(net, experience, loss, optim, path, frame):
 	torch.save({
 		'frame': frame,
-		'state_dict': state_dict,
+		'state_dict': net.state_dict(),
+        'experience': experience,
 		'optimizer': optim},
 		path)
 
 # Load pretrained model
 def load_model(net, path):
 	state_dict = torch.load(path)
-	new_state_dict = collections.OrderedDict()
-	for k, value in state_dict['state_dict'].iteritems():
-		key = "module.{}".format(k)
-		new_state_dict[key] = value
-	net.load_state_dict(new_state_dict)
+	net.load_state_dict(state_dict['state_dict'])
 	frame = state_dict['frame']
 	print("Having pre-trained %d frames." % frame)
+	experience = state_dict['experience']
 	optimizer = state_dict['optimizer']
 	net.train()
-	return net, frame, optimizer
+	return net, frame, experience, optimizer
 
 # Training
 def Core():   
-    writer = SummaryWriter(comment = '-VSL-Dueling')
-    env = Env.SumoEnv(writer, death_factor= 0.0004)  ###This IO needs to be modified
+    writer = SummaryWriter(comment = '-VSL-BASIC')
+    env = Env.SumoEnv(writer, death_factor= params['death_factor'])  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
+    env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= True)  ###wrapper could be modified
     #print(env.action_space.n)
-    net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
+    net = DQN(env.observation_space.shape, env.action_space.n)
 
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
     if torch.cuda.is_available():
-        c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
-        gpu = int(c) if c is not '' else 0
-        device = torch.device('cuda:' + str(gpu) if torch.cuda.is_available() else 'cpu')
-        if gpu is not None:
-            torch.cuda.set_device(gpu)
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-            net.cuda(device)
-            torch.backends.cudnn.benchmark = True
-        print("Now using {} for training".format(torch.cuda.get_device_name(torch.cuda.current_device())))
+        d = int(input("Please choose device to run the programe (0 - cpu  1 - gpu) : "))
+        if d != 0:
+            c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
+            gpu = int(c) if c is not '' else 0
+            device = torch.device('cuda:' + str(gpu))
+            if gpu is not None:
+                torch.cuda.set_device(gpu)
+                torch.set_default_tensor_type('torch.cuda.FloatTensor')
+                net.cuda(device)
+                torch.backends.cudnn.benchmark = True
+            print("Now using {} for training".format(torch.cuda.get_device_name(torch.cuda.current_device())))
+        else:
+            device = torch.device('cpu')
+            print("Now using CPU for training")
 
     tgt_net = agent.TargetNet(net)
     selector = action.EpsilonGreedyActionSelector(epsilon=params['epsilon_start'])
@@ -131,25 +161,26 @@ def Core():
     if path:
         if os.path.isfile(path):
             print("=> Loading checkpoint '{}'".format(path))
-            net, frame_idx, optimizer = load_model(net, path)
+            net, frame_idx, exp_source, optimizer = load_model(net, path)
             print("Checkpoint loaded successfully! ")
         else:
             optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
             print("=> No such checkpoint at '{}'".format(path))
     
     #Add graph at the first roll
-    print("=> Loading Environment for neural network demonstration...")
-    envg = Env.SumoEnv(writer)
-    envg = wrapper.wrap_dqn(envg, stack_frames = 3, episodic_life= False, reward_clipping= False) 
-    print("=> Drawing neural network graph...")
-    states = list()
-    states.append(envg.reset())
-    states = agent.default_states_preprocessor(states)
-    if torch.is_tensor(states):
-        states = states.to(device)
-    writer.add_graph(net, states)
-    print("=> Graph done!")
-    envg.close()
+    while frame_idx:
+        print("=> Loading Environment for neural network demonstration...")
+        envg = Env.SumoEnv(writer)
+        envg = wrapper.wrap_dqn(envg, stack_frames = 3, episodic_life= False, reward_clipping= True) 
+        print("=> Drawing neural network graph...")
+        states = list()
+        states.append(envg.reset())
+        states = agent.default_states_preprocessor(states)
+        if torch.is_tensor(states):
+            states = states.to(device)
+            writer.add_graph(net, states)
+            print("=> Graph done!")
+        envg.close()
 
     with tracker.RewardTracker(writer, params['stop_reward'], params['stop_frame']) as reward_tracker:  #stop reward needs to be modified according to reward function
         while True:
@@ -194,7 +225,7 @@ def Core():
             
             #saving model
             if frame_idx % 1000== 0:
-                save_model(net, optimizer, path, frame_idx)
+                save_model(net, exp_source, loss_v, optimizer, path, frame_idx)
                 print("Network saved at %s" % path)
             
             if frame_idx % params['max_tau'] == 0:

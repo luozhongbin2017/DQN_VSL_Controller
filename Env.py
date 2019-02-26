@@ -185,11 +185,11 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         return waiting_time
     
     def _getcongestionratio(self):
-        for lanearea_dec in self.lanearea_dec_list:
+        for lanearea in self.lanearea_dec_list:
             dec_length = 0.0
             jam_length = 0.0
-            dec_length += traci.lanearea.getLength(lanearea_dec)
-            jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
+            dec_length += traci.lanearea.getLength(lanearea)
+            jam_length += traci.lanearea.getJamLengthMeters(lanearea)
         ratio = jam_length / dec_length
         return ratio
     
@@ -199,23 +199,16 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             ms.append(traci.lane.getLastStepMeanSpeed(lane))
         meanspeed = np.mean(ms)
         return meanspeed
-    
-    def _transform(self, x):
-        return 1/(1 + np.exp(-x))
 
     def step_reward(self):
         #Using waiting_time to present reward.
         speedfactor = self._getmeanspeed() - self.meanspeed
         wtfactor = self._getwaitingtime() - self.waiting_time
         ratiofactor = self._getcongestionratio() - self.ratio
-        reward = self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
-        self.waiting_time = self._getwaitingtime()
-        self.ratio = self._getcongestionratio()
-        self.meanspeed = self._getmeanspeed()
         if self.death_factor < self.ratio:
-            reward -= 1
-        else:
-            reward += 0.5
+            reward = -10
+        if speedfactor > 0 or wtfactor < 0 or ratiofactor < 0:
+            reward = 1
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -252,8 +245,8 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             sys.stdout.flush()
             self.run_step += 1
         observation = self.update_observation()
-        self.writer.add_scalar("Env/Waiting time", self.waiting_time)
-        self.writer.add_scalar("Env/Congestion ratio", self.ratio)
+        self.writer.add_scalar("Current_Env/Waiting time", self.waiting_time, self.run_step)
+        self.writer.add_scalar("Current_Env/Congestion ratio", self.ratio, self.run_step)
         return observation, reward, self.is_episode(), {'No info'}
 
     def reset(self):

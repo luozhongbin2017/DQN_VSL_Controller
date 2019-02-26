@@ -8,8 +8,7 @@ import torch.nn as nn
 Constants = {
         'training_name':'training',
         'evaluate_name':'evaluation',
-        'stop_reward':      18000.0,   # Maximum reward to stop training
-        'stop_frame':       50000,  # Maximum timestep to stop training
+
         
         ### MEMORY HYPERPARAMETERS
         'replay_size':      30000, # number of previous transitions to remember
@@ -29,8 +28,11 @@ Constants = {
         # Q LEARNING hyperparameters
         'gamma':            0.99,  # Discounting rate
 
-        ### TRAINING HYPERPARAMETERS 
-        'batch_size':       256,
+        ### TRAINING HYPERPARAMETERS
+        'stop_reward':      18000.0,   # Maximum reward to stop training
+        'stop_frame':       50000,  # Maximum timestep to stop training 
+        'batch_size':       64,
+        'death_factor':     0.0004,  #Most acceptable congestion ratio
 
         # FIXED Q TARGETS HYPERPARAMETERS
         'max_tau':          1000   #Tau is the C step where we sync our target network   
