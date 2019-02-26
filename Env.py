@@ -185,7 +185,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         return waiting_time
     
     def _getcongestionratio(self):
-        for lanearea in self.lane_list:
+        for lanearea in self.lanearea_dec_list:
             dec_length = 0.0
             jam_length = 0.0
             dec_length += traci.lanearea.getLength(lanearea)
@@ -199,26 +199,17 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             ms.append(traci.lane.getLastStepMeanSpeed(lane))
         meanspeed = np.mean(ms)
         return meanspeed
-    
-    def _transform(self, x):
-        return 1/(1 + np.exp(-x))
 
     def step_reward(self):
         #Using waiting_time to present reward.
         speedfactor = self._getmeanspeed() - self.meanspeed
         wtfactor = self._getwaitingtime() - self.waiting_time
         ratiofactor = self._getcongestionratio() - self.ratio
-        reward = self._transform(speedfactor)  - self._transform(wtfactor) - ratiofactor
-        self.waiting_time = self._getwaitingtime()
-        self.ratio = self._getcongestionratio()
-        self.meanspeed = self._getmeanspeed()
         if self.death_factor < self.ratio:
-            reward -= 1
-        elif self.run_step == END_TIME:
-            reward += 1
-        else:
-            reward += 0.005
-        return reward / 12
+            reward = -10
+        if speedfactor > 0 or wtfactor < 0 or ratiofactor < 0:
+            reward = 1
+        return reward
     
     def reset_vehicle_maxspeed(self):
         for lane in self.lane_list:
