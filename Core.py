@@ -74,7 +74,7 @@ def save_model(net, buffer, loss, optim, path, frame):
 	torch.save({
 		'frame': frame,
 		'state_dict': state_dict,
-        'buffer': buffer,
+        'buffer': buffer.buffer,
         'loss': loss,
 		'optimizer': optim},
 		path)
@@ -89,7 +89,7 @@ def load_model(net, path):
 	net.load_state_dict(new_state_dict)
 	frame = state_dict['frame']
 	print("Having pre-trained %d frames." % frame)
-	buffer = state_dict['buffer']
+	buffer.buffer = state_dict['buffer']
 	loss = state_dict['loss']
 	optimizer = state_dict['optimizer']
 	net.train()
@@ -98,7 +98,7 @@ def load_model(net, path):
 # Training
 def Core():   
     writer = SummaryWriter(comment = '-VSL-Dueling')
-    env = Env.SumoEnv(writer, death_factor= 0.0004)  ###This IO needs to be modified
+    env = Env.SumoEnv(writer, death_factor= params['death_factor'])  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
     env = wrapper.wrap_dqn(env, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
@@ -108,8 +108,8 @@ def Core():
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
     if torch.cuda.is_available():
-        d = bool(input("Please choose device to run the programe (0 - cpu  1 - gpu) :\n"))
-        if d:
+        d = int(input("Please choose device to run the programe (0 - cpu  1 - gpu) :\n"))
+        if d != 0:
             c = input("Please assign a gpu core (int, <" + str(torch.cuda.device_count()) + "): ")
             gpu = int(c) if c is not '' else 0
             device = torch.device('cuda:' + str(gpu))

@@ -185,11 +185,11 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         return waiting_time
     
     def _getcongestionratio(self):
-        for lanearea_dec in self.lanearea_dec_list:
+        for lanearea in self.lane_list:
             dec_length = 0.0
             jam_length = 0.0
-            dec_length += traci.lanearea.getLength(lanearea_dec)
-            jam_length += traci.lanearea.getJamLengthMeters(lanearea_dec)
+            dec_length += traci.lanearea.getLength(lanearea)
+            jam_length += traci.lanearea.getJamLengthMeters(lanearea)
         ratio = jam_length / dec_length
         return ratio
     
