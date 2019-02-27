@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import pickle
 import os,sys
 sys.path.append("./lib")
 sys.path.append("./common")
@@ -25,7 +26,7 @@ from common import action, agent, utils, experience, tracker, wrapper
 params = utils.Constants
 
 # Build Up Neural Network
-'''class DuelingNetwork(nn.Module):
+class DuelingNetwork(nn.Module):
     """
     Create a neural network to convert image data
     """
@@ -63,9 +64,9 @@ params = utils.Constants
         conv_out = self.convolutional_Layer(fx).view(fx.size()[0], -1)
         val = self.fully_connected_val(conv_out)
         adv = self.fully_connected_adv(conv_out)
-        return val + adv - adv.mean()'''
+        return val + adv - adv.mean()
 
-class DQN(nn.Module):
+'''class DQN(nn.Module):
     """Basic neural network framework"""
     def __init__(self, input_shape, n_actions):
         super(DQN, self).__init__()
@@ -93,14 +94,18 @@ class DQN(nn.Module):
     def forward(self, x):
         fx = x.float()
         conv_out = self.conv(fx).view(fx.size()[0], -1)
-        return self.fc(conv_out)
+        return self.fc(conv_out)'''
 
 # Saving model
-def save_model(net, experience, loss, optim, path, frame):
+def save_model(net, buffer, beta, optim, path, frame):
 	torch.save({
 		'frame': frame,
 		'state_dict': net.state_dict(),
-        'experience': experience,
+        #prioritized replay params:
+        'buffer': buffer.buffer,
+        'priorities': buffer.priorities,
+        'pos': buffer.pos,
+        #optimizer:
 		'optimizer': optim},
 		path)
 
@@ -110,20 +115,22 @@ def load_model(net, path):
 	net.load_state_dict(state_dict['state_dict'])
 	frame = state_dict['frame']
 	print("Having pre-trained %d frames." % frame)
-	experience = state_dict['experience']
+	buffer = state_dict['buffer']
+	priorities = state_dict['priorities']
+	pos = state_dict['pos']
 	optimizer = state_dict['optimizer']
 	net.train()
-	return net, frame, experience, optimizer
+	return net, frame, buffer, priorities, pos, optimizer
 
 # Training
 def Core():   
-    writer = SummaryWriter(comment = '-VSL-BASIC')
-    env = Env.SumoEnv(writer, death_factor= params['death_factor'])  ###This IO needs to be modified
+    writer = SummaryWriter(comment = '-VSL-DuelingNetwork')
+    env = Env.SumoEnv(writer, frameskip= 10, death_factor= params['death_factor'])  ###This IO needs to be modified
     #env = env.unwrapped
     #print(env_traino.state_shape)
-    env = wrapper.wrap_dqn(env, skipframes= 1, stack_frames = 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
+    env = wrapper.wrap_dqn(env, skipframes= 1, stack_frames= 3, episodic_life= False, reward_clipping= False)  ###wrapper could be modified
     #print(env.action_space.n)
-    net = DQN(env.observation_space.shape, env.action_space.n)
+    net = DuelingNetwork(env.observation_space.shape, env.action_space.n)
 
     path = os.path.join('./runs/', 'checkpoint.pth')
     print("CUDA™ is " + ("AVAILABLE" if torch.cuda.is_available() else "NOT AVAILABLE"))
@@ -160,7 +167,7 @@ def Core():
     if path:
         if os.path.isfile(path):
             print("=> Loading checkpoint '{}'".format(path))
-            net, frame_idx, exp_source, optimizer = load_model(net, path)
+            net, frame_idx, buffer.buffer, buffer.priorities, buffer.pos, optimizer = load_model(net, path)
             print("Checkpoint loaded successfully! ")
         else:
             optimizer = optim.Adam(net.parameters(), lr=params['learning_rate'])
@@ -192,6 +199,10 @@ def Core():
             if new_rewards:
                 writer.add_scalar("Interaction/Beta", beta, frame_idx)
                 if reward_tracker.reward(new_rewards[0], frame_idx, selector.epsilon):
+                    #saving model
+                    if len(buffer) > params['replay_initial']:
+                       save_model(net, buffer, beta, optimizer, path, frame_idx)
+                       print("\n=> Checkpoint reached.\n=>Network saved at %s" % path)
                     env.close()
                     break
 
@@ -207,7 +218,7 @@ def Core():
 
             #Prioritized memory optimization
             if flag:
-                print('Training now...')
+                print("\nTraining begins...")
                 flag = False
             optimizer.zero_grad()
             batch, batch_indices, batch_weights = buffer.sample(params['batch_size'], beta)
@@ -222,10 +233,6 @@ def Core():
             for name, netparam in net.named_parameters():
                     writer.add_histogram('Model/' + name, netparam.clone().cpu().data.numpy(), frame_idx)
             
-            #saving model
-            if frame_idx % 1000== 0:
-                save_model(net, exp_source, loss_v, optimizer, path, frame_idx)
-                print("Network saved at %s" % path)
             
             if frame_idx % params['max_tau'] == 0:
                 tgt_net.sync()  #Sync q_eval and q_target

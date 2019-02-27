@@ -24,7 +24,7 @@ speeds = [11.11, 13.89, 16.67, 19.44, 22.22]  # possible actions collection
 
 
 class SumoEnv(gym.Env):       ###It needs to be modified
-    def __init__(self, writer, frameskip= 4, death_factor= 0.001, demonstration = False):
+    def __init__(self, writer, frameskip= 10, death_factor= 0.001, demonstration = False):
         #create environment
 
         self.warmstart = WARM_UP_TIME
@@ -210,10 +210,10 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         delay_reward = self._transformedtanh(delta_delay)
         satur_discount = 1 + np.sign(delta_delay) * (self.death_factor - self.saturation) ** 2
         self.delaytime = self._delaytime()
-        if self.saturation > 0.6:
+        if self.saturation > 0.75:
             reward = -1.0
         else:
-            reward = delay_reward * satur_discount
+            reward = 0.1 * delay_reward * satur_discount * 0.06
         return reward
     
     def reset_vehicle_maxspeed(self):
@@ -230,7 +230,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
 
     def step(self, a):
         # Conduct action, update observation and collect reward.
-        reward = list()
+        reward = 0.0
         action = self.action_set[a]
         for i in range(3):
             self.lanearea_max_speed[action[0][i]]=action[1]
@@ -240,7 +240,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
         else:
             num_steps = self.np_random.randint(self.frameskip[0], self.frameskip[1])
         for _ in range(num_steps):
-            reward.append(self.step_reward())
+            reward += self.step_reward()
             traci.simulationStep()
             num_arrow = int(self.run_step * 50 / END_TIME)
             num_line = 50 - num_arrow
@@ -251,7 +251,7 @@ class SumoEnv(gym.Env):       ###It needs to be modified
             self.run_step += 1
         observation = self.update_observation()
         #print("reward:" + str(np.mean(np.clip(reward, -1, 1))))
-        return observation, np.mean(np.clip(reward, -1, 1)), self.is_episode(), {'No info'}
+        return observation, reward, self.is_episode(), {'No info'}
 
     def reset(self):
         # Reset simulation with the random seed randomly selected the pool.

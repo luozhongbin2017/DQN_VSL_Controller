@@ -12,10 +12,10 @@ Constants = {
         
         ### MEMORY HYPERPARAMETERS
         'replay_size':      30000, # number of previous transitions to remember
-        'replay_initial':   3000,  #Timesteps to observe before training
+        'replay_initial':   30000,  #Timesteps to observe before training
 
         # EXPLORATION HYPERPARAMETERS for epsilon greedy strategy
-        'epsilon_frames':   80000, # frames over which to anneal epsilon
+        'epsilon_frames':   90000, # frames over which to anneal epsilon
         'epsilon_start':    1.0,   # exploration probability at start
         'epsilon_final':    0.02,  # minimum exploration probability
         'learning_rate':    0.02,  # exponential decay rate for exploration prob
@@ -35,7 +35,7 @@ Constants = {
         'death_factor':     0.75,  #Most acceptable congestion ratio
 
         # FIXED Q TARGETS HYPERPARAMETERS
-        'max_tau':          1000   #Tau is the C step where we sync our target network   
+        'max_tau':          100   #Tau is the C step where we sync our target network   
         } 
            
 
